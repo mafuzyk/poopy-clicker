@@ -1,0 +1,9 @@
+[Flatpak Ref]
+Version=1
+Name=com.poopy.Clicker
+Branch=stable
+Title=Poopy Clicker
+Url=https://mafuzyk.github.io/poopy-clicker/repo/
+RuntimeRepo=https://dl.flathub.org/repo/flathub.flatpakrepo
+IsRuntime=false
+GPGKey=COLE_AQUI_O_CONTEUDO_DO_key.b64
