@@ -6,4 +6,4 @@ Title=Poopy Clicker
 Url=https://mafuzyk.github.io/poopy-clicker/repo/
 RuntimeRepo=https://dl.flathub.org/repo/flathub.flatpakrepo
 IsRuntime=false
-GPGKey=E288373F07DE3428
+GPGKey=rsa4096/E288373F07DE3428
