@@ -58,7 +58,7 @@ func setup(state: GameState) -> void:
 	game_state = state
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	base = BasePanel.new()
-	base.setup("MENU")
+	base.setup("MENU", false)
 	base.close_requested.connect(close_requested.emit)
 	add_child(base)
 	_build_grid()

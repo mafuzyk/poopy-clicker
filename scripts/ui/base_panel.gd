@@ -14,14 +14,15 @@ var panel: PanelContainer
 var close_button: Button
 var _root_box: VBoxContainer
 var _center: CenterContainer
+var _scroll: ScrollContainer
 
 
-func setup(panel_title: String) -> void:
+func setup(panel_title: String, show_close_button := true) -> void:
 	name = "BasePanel"
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	z_index = 50
-	_build(panel_title)
+	_build(panel_title, show_close_button)
 
 
 func _ready() -> void:
@@ -29,7 +30,7 @@ func _ready() -> void:
 	resized.connect(_update_panel_size)
 
 
-func _build(panel_title: String) -> void:
+func _build(panel_title: String, show_close_button := true) -> void:
 	var dim: ColorRect = ColorRect.new()
 	dim.name = "Dim"
 	dim.color = DIM_COLOR
@@ -64,22 +65,23 @@ func _build(panel_title: String) -> void:
 	title_label.add_theme_font_size_override("font_size", Layout.PANEL_TITLE_FONT)
 	_root_box.add_child(title_label)
 
-	var scroll: ScrollContainer = ScrollContainer.new()
-	scroll.name = "ContentScroll"
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_root_box.add_child(scroll)
+	_scroll = ScrollContainer.new()
+	_scroll.name = "ContentScroll"
+	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_root_box.add_child(_scroll)
 
 	var content_holder: VBoxContainer = VBoxContainer.new()
 	content_holder.name = "ContentHolder"
 	content_holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content_holder.add_theme_constant_override("separation", 8)
-	scroll.add_child(content_holder)
+	_scroll.add_child(content_holder)
 	content_slot = content_holder
 
 	close_button = UiStyles.make_button("Fechar", Layout.PANEL_ACTION_FONT, Layout.BAR_BUTTON_HEIGHT)
 	close_button.name = "CloseButton"
 	close_button.pressed.connect(close_requested.emit)
+	close_button.visible = show_close_button
 	_root_box.add_child(close_button)
 
 
@@ -89,13 +91,28 @@ func add_to_content(control: Control) -> void:
 
 
 func _update_panel_size() -> void:
-	if panel == null or _root_box == null or not is_inside_tree():
+	if panel == null or _root_box == null or _scroll == null or not is_inside_tree():
 		return
 	var viewport_size := get_viewport_rect().size
 	var max_width := minf(Layout.PANEL_MAX_WIDTH, viewport_size.x - Layout.EDGE_MARGIN * 2.0)
 	var max_height := viewport_size.y - Layout.TOP_BAR_HEIGHT - Layout.BOTTOM_BAR_HEIGHT - Layout.EDGE_MARGIN * 2.0
 
-	panel.custom_minimum_size = Vector2(max_width, 0.0)
-	var content_min := _root_box.get_combined_minimum_size()
-	var panel_height := minf(content_min.y, max_height)
-	panel.custom_minimum_size = Vector2(max_width, panel_height)
+	var separation: float = float(_root_box.get_theme_constant("separation"))
+	var visible_children := 0
+	for child: Node in _root_box.get_children():
+		if child is Control and (child as Control).visible:
+			visible_children += 1
+	var total_spacing := separation * maxf(0.0, float(visible_children - 1))
+
+	var title_h := title_label.get_combined_minimum_size().y
+	var close_h := close_button.get_combined_minimum_size().y if close_button.visible else 0.0
+	var chrome_height := title_h + close_h + total_spacing
+
+	var content_h := content_slot.get_combined_minimum_size().y
+	var available_scroll_height := maxf(0.0, max_height - chrome_height)
+	_scroll.custom_minimum_size.y = minf(content_h, available_scroll_height)
+
+	panel.custom_minimum_size = Vector2(
+		max_width,
+		minf(chrome_height + content_h, max_height)
+	)
