@@ -38,3 +38,10 @@ func restart_decay(extra_grace_seconds: float = 0.0) -> void:
 func _on_decay_timeout() -> void:
 	game_state.reset_combo()
 	combo_broken.emit()
+
+
+# No Prestige o GameState já foi resetado atomicamente; aqui só paramos o timer
+# estagnado sem tocar no estado de novo (evita reemitir changed indevido).
+func reset_runtime_for_prestige() -> void:
+	if decay_timer != null:
+		decay_timer.stop()

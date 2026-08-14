@@ -52,6 +52,14 @@ func _test_decay_and_restart() -> void:
 	await get_tree().create_timer(0.9).timeout
 	check(state.combo_count == 0, "decay completo apos ~2.9s com grace")
 
+	# reset_runtime_for_prestige: para o timer sem tocar no estado.
+	combo.register_manual_click()
+	check(state.combo_count == 1, "combo ativo antes do reset")
+	check(not combo.decay_timer.is_stopped(), "decay iniciado")
+	combo.reset_runtime_for_prestige()
+	check(combo.decay_timer.is_stopped(), "reset para o decay timer")
+	check(state.combo_count == 1, "reset nao muda o combo")
+
 	if failures == 0:
 		print("COMBO TIME TEST PASS: %d checks" % checks)
 	else:

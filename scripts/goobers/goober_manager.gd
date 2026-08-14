@@ -163,6 +163,17 @@ func register_click() -> void:
 		try_spawn_goober()
 
 
+# Reset de run no Prestige: limpa goobers e contadores, mas preserva o snapshot
+# de evento (evento ativo sobrevive ao Prestige).
+func reset_run() -> void:
+	for goober in goobers:
+		if is_instance_valid(goober):
+			goober.queue_free()
+	goobers.clear()
+	click_spawn_counter = 0
+	passive_spawn_timer = PASSIVE_SPAWN_INTERVAL
+
+
 var dev_spawn_index := 0
 var dev_button: Button
 

@@ -11,6 +11,7 @@ const GooberCatalog = preload("res://scripts/goobers/goober_catalog.gd")
 const AchievementManager = preload("res://scripts/achievements/achievement_manager.gd")
 const EventCatalog = preload("res://scripts/data/event_catalog.gd")
 const EventManager = preload("res://scripts/systems/event_manager.gd")
+const ComboManager = preload("res://scripts/systems/combo_manager.gd")
 const ClickController = preload("res://scripts/systems/click_controller.gd")
 const GooberManager = preload("res://scripts/goobers/goober_manager.gd")
 const Main = preload("res://main.gd")
@@ -66,6 +67,7 @@ func _initialize() -> void:
 	_test_essence_payout()
 	_test_gc_prestige_lucky()
 	_test_prestige_achievements()
+	_test_runtime_reset_hooks()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -1035,3 +1037,19 @@ func _test_prestige_achievements() -> void:
 	check(manager.is_unlocked("prestige_5"), "P5: prestige_5 unlock")
 	check(not manager.is_unlocked("prestige_10"), "P5: prestige_10 locked")
 	check(manager.get_progress("prestige_50") == Vector2i(5, 50), "progress prestige_50 = 5/50")
+
+
+func _test_runtime_reset_hooks() -> void:
+	# GooberManager.reset_run: limpa goobers/contadores, preserva snapshot.
+	# (O reset do combo usa timer real e é testado na cena combo_time_test.)
+	var manager := GooberManager.new()
+	root.add_child(manager)
+	manager.goobers.append(Goober.new())
+	manager.click_spawn_counter = 14
+	manager.passive_spawn_timer = 2.0
+	manager.apply_goober_snapshot({"spawn_bonus": 3})
+	manager.reset_run()
+	check(manager.goobers.is_empty(), "goobers limpos")
+	check(manager.click_spawn_counter == 0, "click_spawn_counter reset")
+	check(is_equal_approx(manager.passive_spawn_timer, 12.0), "passive_spawn_timer reset")
+	check(int(manager.event_snapshot["spawn_bonus"]) == 3, "event_snapshot preservado no reset")
