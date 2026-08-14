@@ -14,6 +14,7 @@ const SIZE_RATIO := 0.24
 const GOOBER_SIZE_MIN := 88.0
 const GOOBER_SIZE_MAX := 150.0
 const ANIMATIONS := ["idle", "walk", "scare", "panic"]
+const BOSS_SPAWN_CHANCE := 0.05
 
 # TEMP: ferramenta de teste determinístico no device até a UI final (remover na fase de polimento).
 # Escondida por padrão; ative mudando DEV_TEST_SPAWN para true se precisar testar spawn manual.
@@ -31,6 +32,7 @@ var shared_frames: SpriteFrames
 var goobers: Array[Goober] = []
 var click_spawn_counter := 0
 var passive_spawn_timer := PASSIVE_SPAWN_INTERVAL
+var boss_active := false
 
 # Snapshot de modificadores de evento (fornecido pelo main; manager não conhece
 # EventManager nem ramifica por ID). rare_bonus/boss_bonus/special_essence_bonus
@@ -117,7 +119,29 @@ func get_bounds() -> Rect2:
 func try_spawn_goober() -> void:
 	if goobers.size() >= _effective_max_goobers():
 		return
-	spawn_goober_of_type(catalog.roll_type())
+	spawn_goober_of_type(_choose_spawn_type())
+
+
+# Canônico choose_goober_type: boss gate (money_earned > 10000 + chance + boss_bonus)
+# e, senão, spawn por raridade com luck. Rolls < 0 usam randf() real (testes injetam).
+func _choose_spawn_type(boss_roll: float = -1.0, rarity_roll: float = -1.0, candidate_roll: float = -1.0) -> String:
+	var boss_bonus := float(game_state.get_perk_level("boss_hunter")) * 0.01
+	if game_state.prestige_level >= 10:
+		boss_bonus += 0.02
+	if game_state.boss_beacon_bought:
+		boss_bonus += 0.03
+	boss_bonus += float(event_snapshot["boss_bonus"])
+
+	var roll := randf() if boss_roll < 0.0 else boss_roll
+	if not boss_active and game_state.get_money_earned_total() > 10000 and roll < BOSS_SPAWN_CHANCE + boss_bonus:
+		boss_active = true
+		return "boss"
+
+	var luck := float(game_state.get_perk_level("goober_luck")) * 0.0015 + game_state.get_collection_luck_bonus()
+	if game_state.prestige_level >= 5:
+		luck += 0.002
+	luck += float(event_snapshot["rare_bonus"])
+	return catalog.roll_type(luck, rarity_roll, candidate_roll)
 
 
 func force_spawn(type_id: String) -> bool:
@@ -251,6 +275,8 @@ func _on_goober_defeated(goober: Goober) -> void:
 	var data := catalog.get_type(goober.type_id)
 	if data.is_empty():
 		return
+	if goober.type_id == "boss":
+		boss_active = false
 	game_state.register_goober_defeated(goober.type_id)
 	var is_special: bool = goober.type_id != "normal"
 

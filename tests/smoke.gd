@@ -74,6 +74,7 @@ func _initialize() -> void:
 	_test_collections_and_synergies()
 	_test_missions()
 	_test_missions_completion()
+	_test_spawn_model_and_boss()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -720,7 +721,7 @@ func _test_panic_speed_canonical() -> void:
 			"panic %s: speed = speed_max + 3" % id)
 		check(panic_speed > walk_max, "panic %s: mais rapido que o andar maximo" % id)
 		checked += 1
-	check(checked == 19, "19 tipos habilitados verificados (sem bloqueados)")
+	check(checked == 20, "20 tipos habilitados verificados (sem bloqueados)")
 
 
 func _test_special_reward_gating() -> void:
@@ -961,9 +962,9 @@ func _test_essence_goobers_enabled() -> void:
 	check(catalog.is_enabled("royal"), "royal habilitado")
 	check(catalog.is_enabled("prism"), "prism habilitado")
 	check(catalog.is_enabled("crown"), "crown habilitado")
-	check(not catalog.is_enabled("boss"), "boss continua bloqueado")
+	check(catalog.is_enabled("boss"), "boss habilitado (gate proprio)")
 	check(not catalog.is_enabled("angel"), "angel continua bloqueado")
-	check(catalog.get_enabled_ids().size() == 19, "19 tipos habilitados (era 16 + 3 essence)")
+	check(catalog.get_enabled_ids().size() == 20, "20 tipos habilitados (16 + 3 essence + boss)")
 
 
 func _test_essence_payout() -> void:
@@ -1279,3 +1280,36 @@ func _test_missions_completion() -> void:
 	check(state.goober_coins == coins_before + 3, "+3 coins da missao")
 	check(state.mission_state["slots"].size() == 3, "slots regenerados para 3")
 	check(int(state.mission_state["slots"][0].get("progress", -1)) == 0, "nova missao progresso 0")
+
+
+func _test_spawn_model_and_boss() -> void:
+	var catalog := GooberCatalog.new()
+	var t := catalog.roll_type(0.0, 0.0, 0.0)
+	check(t != "" and t != "boss", "roll_type common retorna tipo valido: %s" % t)
+	check(String(catalog.TYPES[t]["rarity"]) == "common", "raridade common (roll 0)")
+
+	var state := GameState.new()
+	var manager := GooberManager.new()
+	manager.game_state = state
+	manager.catalog = GooberCatalog.new()
+	state.stats["money_earned"] = 20000
+
+	var spawned := manager._choose_spawn_type(0.0, 0.0, 0.0)
+	check(spawned == "boss", "boss gate: roll 0.0 < 0.05 -> boss")
+	check(manager.boss_active, "boss_active true")
+	check(manager._choose_spawn_type(0.0, 0.0, 0.0) != "boss", "boss ativo: sem segundo boss")
+
+	manager.boss_active = false
+	state.stats["money_earned"] = 5000
+	check(manager._choose_spawn_type(0.0, 0.0, 0.0) != "boss", "money <= 10000: sem boss")
+
+	state.stats["money_earned"] = 20000
+	manager.apply_goober_snapshot({"boss_bonus": 0.05})
+	check(manager._choose_spawn_type(0.09, 0.0, 0.0) == "boss", "boss_bonus 0.05: roll 0.09 < 0.10 -> boss")
+
+	var bs := GameState.new()
+	bs.prestige_level = 2
+	bs.perks["boss_hunter"] = 3
+	var boss_goober := Goober.new()
+	boss_goober.setup(null, 86.0, "boss", GooberCatalog.new().get_type("boss"), bs)
+	check(boss_goober.hp == 30, "boss max_hits = 18 + 2*3 + 3*2 = 30")

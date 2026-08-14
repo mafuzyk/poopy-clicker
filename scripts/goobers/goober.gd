@@ -55,7 +55,11 @@ func setup(shared_frames: SpriteFrames, size_px: float, type_id_value: String, d
 	input_pickable = false
 	game_state = state_ref
 	type_id = type_id_value
-	hp = int(data["hp"])
+	# Canônico: boss tem max_hits dinâmico = 18 + prestige*3 + boss_hunter*2.
+	if type_id == "boss":
+		hp = 18 + game_state.prestige_level * 3 + game_state.get_perk_level("boss_hunter") * 2
+	else:
+		hp = int(data["hp"])
 	push_normal = float(data["push_normal"])
 	push_panic = float(data["push_panic"])
 	speed_min = float(data["speed_min"])

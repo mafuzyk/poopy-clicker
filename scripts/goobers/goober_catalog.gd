@@ -10,6 +10,11 @@ const RARITY_MULTIPLIERS := {
 	"mythic": 3.0,
 }
 
+# Canônico RARITY_SPAWN_WEIGHT (spawn por raridade; luck escala cada peso).
+const RARITY_SPAWN_WEIGHT := {
+	"common": 1.0, "rare": 0.6, "epic": 0.35, "legendary": 0.15, "mythic": 0.08,
+}
+
 # Reservado: usado quando coleção/perks de luck existirem (spec §8).
 const RARITY_LUCK_FACTORS := {
 	"common": 1.0,
@@ -40,7 +45,6 @@ const SPAWN_BLOCKED_REASON := {
 	"chef": "events",
 	"arcade": "events",
 	"fairy": "events",
-	"boss": "boss",
 }
 
 # TEMP: cores provisórias por tipo até o arquivo canônico definir as identidades visuais.
@@ -125,11 +129,44 @@ func get_enabled_ids() -> Array[String]:
 	return _enabled_ids.duplicate()
 
 
-func roll_type() -> String:
-	var total := _enabled_weight_total + _normal_remainder
-	var roll := randf() * total
+# Canônico: seleção de spawn em duas fases — sorteia a raridade pelos pesos
+# RARITY_SPAWN_WEIGHT escalados por luck (1 + luck*40*(i+1)), depois escolhe
+# uniformemente um candidato habilitado daquela raridade (excluindo boss, que
+# tem gate próprio). Rolls < 0 usam randf() real.
+func roll_type(luck_bonus: float = 0.0, rarity_roll: float = -1.0, candidate_roll: float = -1.0) -> String:
+	var rarities: Array = ["common", "rare", "epic", "legendary", "mythic"]
+	var weights: Array = []
+	for i in range(rarities.size()):
+		var w := float(RARITY_SPAWN_WEIGHT[rarities[i]])
+		w *= 1.0 + luck_bonus * 40.0 * float(i + 1)
+		weights.append(w)
+
+	var roll := randf() if rarity_roll < 0.0 else rarity_roll
+	var chosen := _weighted_pick(rarities, weights, roll)
+
+	var candidates: Array = []
 	for id in _enabled_ids:
-		roll -= float(TYPES[id]["spawn_weight"])
-		if roll <= 0.0:
-			return id
-	return NORMAL_ID
+		if id == "boss":
+			continue
+		if String(TYPES[id]["rarity"]) == chosen:
+			candidates.append(id)
+	if candidates.is_empty():
+		return NORMAL_ID
+
+	var croll := randf() if candidate_roll < 0.0 else candidate_roll
+	return str(candidates[mini(candidates.size() - 1, int(floor(clampf(croll, 0.0, 0.999999) * candidates.size())))])
+
+
+static func _weighted_pick(rarities: Array, weights: Array, roll: float) -> String:
+	var total := 0.0
+	for w in weights:
+		total += float(w)
+	if total <= 0.0:
+		return str(rarities[0])
+	var target := clampf(roll, 0.0, 1.0) * total
+	var cumulative := 0.0
+	for i in rarities.size():
+		cumulative += float(weights[i])
+		if target < cumulative:
+			return str(rarities[i])
+	return str(rarities[rarities.size() - 1])

@@ -207,6 +207,7 @@ func _test_main_integration() -> void:
 
 	var game_state_ref = main.get("game_state")
 	game_state_ref.secret_shop_unlocked = true
+	game_state_ref.mission_state["slots"] = []
 	var money_before: int = game_state_ref.get_money_earned_total()
 	var coins_before: int = game_state_ref.goober_coins
 	goober_manager.apply_goober_snapshot({"spawn_bonus": 0, "special_money_mult": 1.5, "special_coin_bonus": 2})
