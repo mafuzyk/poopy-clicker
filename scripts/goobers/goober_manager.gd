@@ -199,6 +199,19 @@ func reset_run() -> void:
 	passive_spawn_timer = PASSIVE_SPAWN_INTERVAL
 
 
+# Active skill Cleanse: destrói todos os goobers e paga o dinheiro deles.
+func cleanse_goobers() -> void:
+	var total_money := 0
+	for goober in goobers:
+		if is_instance_valid(goober):
+			var data := catalog.get_type(goober.type_id)
+			total_money += int(data.get("money", 0))
+			goober.queue_free()
+	goobers.clear()
+	if total_money > 0:
+		game_state.add_money(total_money)
+
+
 var dev_spawn_index := 0
 var dev_button: Button
 
@@ -310,6 +323,9 @@ func _on_goober_defeated(goober: Goober) -> void:
 			essence_gain += maxi(0, int(event_snapshot["special_essence_bonus"]))
 	if essence_gain > 0:
 		game_state.add_poopy_essence(essence_gain)
+	elif game_state.essence_magnet_bought and is_special and randf() < 0.18:
+		# Canônico: Essence Magnet dá 18% de chance de +1 essence em especiais.
+		game_state.add_poopy_essence(1)
 
 	# Goobers com event_on_click disparam o evento correspondente (canônico).
 	var event_on_click := str(data.get("event_on_click", ""))

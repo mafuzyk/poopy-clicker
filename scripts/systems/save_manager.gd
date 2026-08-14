@@ -73,6 +73,13 @@ func save() -> void:
 		"lucky_paws_bought": game_state.lucky_paws_bought,
 		"sneaky_profit_bought": game_state.sneaky_profit_bought,
 		"panic_shield_bought": game_state.panic_shield_bought,
+		"boss_beacon_bought": game_state.boss_beacon_bought,
+		"essence_magnet_bought": game_state.essence_magnet_bought,
+		"mission_radar_bought": game_state.mission_radar_bought,
+		"cleanse_bought": game_state.cleanse_bought,
+		"frenzy_bought": game_state.frenzy_bought,
+		"skill_shield_bought": game_state.skill_shield_bought,
+		"coinburst_bought": game_state.coinburst_bought,
 		"button_clicks_total": game_state.button_clicks_total,
 	}
 
@@ -139,6 +146,13 @@ func load() -> bool:
 	game_state.lucky_paws_bought = bool(data.get("lucky_paws_bought", false))
 	game_state.sneaky_profit_bought = bool(data.get("sneaky_profit_bought", false))
 	game_state.panic_shield_bought = bool(data.get("panic_shield_bought", false))
+	game_state.boss_beacon_bought = bool(data.get("boss_beacon_bought", false))
+	game_state.essence_magnet_bought = bool(data.get("essence_magnet_bought", false))
+	game_state.mission_radar_bought = bool(data.get("mission_radar_bought", false))
+	game_state.cleanse_bought = bool(data.get("cleanse_bought", false))
+	game_state.frenzy_bought = bool(data.get("frenzy_bought", false))
+	game_state.skill_shield_bought = bool(data.get("skill_shield_bought", false))
+	game_state.coinburst_bought = bool(data.get("coinburst_bought", false))
 	game_state.button_clicks_total = int(data.get("button_clicks_total", 0))
 
 	for handler in save_handlers:

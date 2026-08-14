@@ -7,6 +7,7 @@ const Layout = preload("res://scripts/ui/layout.gd")
 const UiStyles = preload("res://scripts/ui/ui_styles.gd")
 
 signal buy_requested(upgrade: String)
+signal skill_use_requested(key: String)
 signal close_requested
 
 const UPGRADE_ORDER := [
@@ -15,6 +16,13 @@ const UPGRADE_ORDER := [
 	GameState.LUCKY_PAWS,
 	GameState.SNEAKY_PROFIT,
 	GameState.PANIC_SHIELD,
+	GameState.BOSS_BEACON,
+	GameState.ESSENCE_MAGNET,
+	GameState.MISSION_RADAR,
+	GameState.CLEANSE,
+	GameState.FRENZY,
+	GameState.SKILL_SHIELD,
+	GameState.COINBURST,
 ]
 
 const UPGRADE_NAMES := {
@@ -23,6 +31,13 @@ const UPGRADE_NAMES := {
 	GameState.LUCKY_PAWS: "Lucky Paws",
 	GameState.SNEAKY_PROFIT: "Sneaky Profit",
 	GameState.PANIC_SHIELD: "Panic Shield",
+	GameState.BOSS_BEACON: "Boss Beacon",
+	GameState.ESSENCE_MAGNET: "Essence Magnet",
+	GameState.MISSION_RADAR: "Mission Radar",
+	GameState.CLEANSE: "Limpeza",
+	GameState.FRENZY: "Frenesi",
+	GameState.SKILL_SHIELD: "Escudo",
+	GameState.COINBURST: "Explosão",
 }
 
 const DESCRIPTIONS := {
@@ -31,18 +46,29 @@ const DESCRIPTIONS := {
 	GameState.LUCKY_PAWS: "+1 moeda extra por goober",
 	GameState.SNEAKY_PROFIT: "+25% no auto click",
 	GameState.PANIC_SHIELD: "Empurrão de pânico reduzido",
+	GameState.BOSS_BEACON: "+3% chance de spawnar boss",
+	GameState.ESSENCE_MAGNET: "18% de essence extra em especiais",
+	GameState.MISSION_RADAR: "Missões dão 1.2x dinheiro e +1 moeda",
+	GameState.CLEANSE: "Habilidade: destrói todos os goobers (60s)",
+	GameState.FRENZY: "Habilidade: 2x clique por 8s (90s)",
+	GameState.SKILL_SHIELD: "Habilidade: bloqueia eventos por 10s (75s)",
+	GameState.COINBURST: "Habilidade: 3x moedas por 12s (120s)",
 }
 
 var UPGRADE_BUTTONS: Dictionary = {}
 var UPGRADE_CARDS: Dictionary = {}
 
+const SKILL_KEYS := [GameState.CLEANSE, GameState.FRENZY, GameState.SKILL_SHIELD, GameState.COINBURST]
+
 var game_state: GameState
 var base: BasePanel
 var coins_label: Label
+var skill_manager: Node
 
 
-func setup(state: GameState) -> void:
+func setup(state: GameState, skills: Node = null) -> void:
 	game_state = state
+	skill_manager = skills
 	build_ui()
 	game_state.changed.connect(refresh)
 	refresh()
@@ -94,11 +120,18 @@ func _make_upgrade_card(upgrade: String) -> PanelContainer:
 	button.name = "Button"
 	button.custom_minimum_size.x = 96.0
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	button.pressed.connect(buy_requested.emit.bind(upgrade))
+	button.pressed.connect(_on_button_pressed.bind(upgrade))
 	UPGRADE_BUTTONS[upgrade] = button
 	row.add_child(button)
 
 	return card
+
+
+func _on_button_pressed(upgrade: String) -> void:
+	if SKILL_KEYS.has(upgrade) and game_state.is_secret_upgrade_bought(upgrade):
+		skill_use_requested.emit(upgrade)
+	else:
+		buy_requested.emit(upgrade)
 
 
 func refresh() -> void:
@@ -108,8 +141,16 @@ func refresh() -> void:
 		var button: Button = UPGRADE_BUTTONS[upgrade]
 		var card: PanelContainer = UPGRADE_CARDS[upgrade]
 		if game_state.is_secret_upgrade_bought(upgrade):
-			button.text = "Comprado"
-			button.disabled = true
+			if SKILL_KEYS.has(upgrade) and skill_manager != null:
+				if skill_manager.is_on_cooldown(upgrade):
+					button.text = "%.0fs" % skill_manager.get_cooldown_remaining(upgrade)
+					button.disabled = true
+				else:
+					button.text = "Usar"
+					button.disabled = false
+			else:
+				button.text = "Comprado"
+				button.disabled = true
 		else:
 			var cost: int = game_state.get_secret_upgrade_cost(upgrade)
 			button.text = "%d GC" % cost

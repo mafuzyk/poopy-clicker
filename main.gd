@@ -25,6 +25,7 @@ const PrestigePanel = preload("res://scripts/ui/prestige_panel.gd")
 const PerksPanel = preload("res://scripts/ui/perks_panel.gd")
 const MissionsPanel = preload("res://scripts/ui/missions_panel.gd")
 const MissionManager = preload("res://scripts/systems/mission_manager.gd")
+const SkillManager = preload("res://scripts/systems/skill_manager.gd")
 
 
 var game_state: GameState
@@ -52,6 +53,7 @@ var prestige_panel: PrestigePanel
 var perks_panel: PerksPanel
 var missions_panel: MissionsPanel
 var mission_manager: MissionManager
+var skill_manager: SkillManager
 
 
 func _ready() -> void:
@@ -61,6 +63,7 @@ func _ready() -> void:
 	create_combo_manager()
 	create_event_manager()
 	create_mission_manager()
+	create_skill_manager()
 	build_ui()
 	setup_click_controller()
 	setup_auto_clicker()
@@ -131,6 +134,13 @@ func create_mission_manager() -> void:
 	add_child(mission_manager)
 
 
+func create_skill_manager() -> void:
+	skill_manager = SkillManager.new()
+	skill_manager.name = "SkillManager"
+	skill_manager.setup(game_state)
+	add_child(skill_manager)
+
+
 # start: aplica definition + derived capabilities do evento INICIADO.
 func _on_event_started(id: String, definition: Dictionary) -> void:
 	if click_controller == null:
@@ -189,6 +199,8 @@ func _input(event: InputEvent) -> void:
 func setup_goobers() -> void:
 	goober_manager.setup(click_button, game_state)
 	goober_manager.event_trigger_requested.connect(event_manager.force_start_event)
+	skill_manager.goober_manager = goober_manager
+	skill_manager.event_manager = event_manager
 
 
 func build_ui() -> void:
@@ -251,8 +263,9 @@ func setup_panels() -> void:
 	panel_manager.register_surface("shop", shop_ui)
 
 	secret_shop_ui = SecretShopUI.new()
-	secret_shop_ui.setup(game_state)
+	secret_shop_ui.setup(game_state, skill_manager)
 	secret_shop_ui.buy_requested.connect(on_secret_buy_requested)
+	secret_shop_ui.skill_use_requested.connect(skill_manager.use_skill)
 	panel_manager.register_surface("gshop", secret_shop_ui)
 
 	achievements_panel = AchievementsPanel.new()
@@ -397,7 +410,7 @@ func on_click() -> void:
 	var event_adjusted_gain: int = economy.get_click_value(
 		event_manager.get_float_modifier("click_mult", 1.0)
 	)
-	var click_gain: int = compute_click_gain(event_adjusted_gain, game_state.get_combo_multiplier())
+	var click_gain: int = compute_click_gain(event_adjusted_gain, game_state.get_combo_multiplier() * game_state.frenzy_mult)
 	game_state.register_button_click()
 	game_state.add_money(click_gain)
 	game_state.goober_coins += compute_click_coin_grant(

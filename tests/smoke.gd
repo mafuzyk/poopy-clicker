@@ -13,6 +13,7 @@ const EventCatalog = preload("res://scripts/data/event_catalog.gd")
 const EventManager = preload("res://scripts/systems/event_manager.gd")
 const ComboManager = preload("res://scripts/systems/combo_manager.gd")
 const MissionManager = preload("res://scripts/systems/mission_manager.gd")
+const SkillManager = preload("res://scripts/systems/skill_manager.gd")
 const ClickController = preload("res://scripts/systems/click_controller.gd")
 const GooberManager = preload("res://scripts/goobers/goober_manager.gd")
 const Main = preload("res://main.gd")
@@ -76,6 +77,8 @@ func _initialize() -> void:
 	_test_missions_completion()
 	_test_spawn_model_and_boss()
 	_test_event_on_click_dispatch()
+	_test_shop_full_inventory()
+	_test_active_skills()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -1331,3 +1334,70 @@ func _test_event_on_click_dispatch() -> void:
 	check(triggered.is_empty(), "gold sem event_on_click -> sem evento")
 	manager._on_goober_defeated(_make_fake_goober("chef", manager))
 	check(triggered == ["snack_break"], "chef derrotado -> evento snack_break")
+
+
+func _test_shop_full_inventory() -> void:
+	var state := GameState.new()
+	check(state.get_secret_upgrade_cost("beacon") == 25, "boss beacon custo 25")
+	check(state.get_secret_upgrade_cost("magnet") == 22, "essence magnet custo 22")
+	check(state.get_secret_upgrade_cost("radar") == 18, "mission radar custo 18")
+	check(state.get_secret_upgrade_cost("coinburst") == 50, "coinburst custo 50")
+	state.goober_coins = 1000
+	for upgrade in ["beacon", "magnet", "radar", "cleanse", "frenzy", "shield", "coinburst"]:
+		check(state.try_buy_secret_upgrade(upgrade), "compra %s" % upgrade)
+	check(state.get_secret_upgrades_bought_count() == 7, "7 novos comprados")
+	check(state.boss_beacon_bought and state.essence_magnet_bought and state.mission_radar_bought, "passivos comprados")
+	check(state.cleanse_bought and state.frenzy_bought and state.skill_shield_bought and state.coinburst_bought, "skills comprados")
+	check(not state.try_buy_secret_upgrade("beacon"), "nao re-compra beacon")
+
+
+func _test_active_skills() -> void:
+	var state := GameState.new()
+	state.frenzy_bought = true
+	state.coinburst_bought = true
+	state.skill_shield_bought = true
+	state.cleanse_bought = true
+
+	var sm := SkillManager.new()
+	sm.setup(state)
+	root.add_child(sm)
+
+	check(sm.can_use("frenzy"), "frenzy usavel")
+	check(sm.use_skill("frenzy"), "usa frenzy")
+	check(is_equal_approx(state.frenzy_mult, 2.0), "frenzy_mult 2.0")
+	check(sm.is_on_cooldown("frenzy"), "frenzy em cooldown")
+	check(not sm.use_skill("frenzy"), "nao reusa em cooldown")
+
+	check(sm.use_skill("coinburst"), "usa coinburst")
+	check(is_equal_approx(state.coinburst_mult, 3.0), "coinburst 3.0")
+
+	var em := EventManager.new()
+	em.setup(state)
+	root.add_child(em)
+	sm.event_manager = em
+	check(sm.use_skill("shield"), "usa shield")
+	check(em.triggers_blocked, "eventos bloqueados")
+
+	var gm := GooberManager.new()
+	gm.game_state = state
+	gm.catalog = GooberCatalog.new()
+	root.add_child(gm)
+	sm.goober_manager = gm
+	var g1 := Goober.new()
+	g1.type_id = "gold"
+	g1.setup(null, 86.0, "gold", GooberCatalog.new().get_type("gold"), state)
+	gm.goobers.append(g1)
+	var g2 := Goober.new()
+	g2.type_id = "angry"
+	g2.setup(null, 86.0, "angry", GooberCatalog.new().get_type("angry"), state)
+	gm.goobers.append(g2)
+	sm.use_skill("cleanse")
+	check(gm.goobers.is_empty(), "cleanse destruiu goobers")
+	check(state.get_money_earned_total() == 6500, "cleanse pagou 5000 + 1500 = 6500")
+
+	# coinburst aplicado ao GC de goobers.
+	var cs := GameState.new()
+	cs.secret_shop_unlocked = true
+	cs.coinburst_mult = 3.0
+	cs.register_goober_click("gold", 4, 5)
+	check(cs.goober_coins == 15, "gold P0 coinburst 3x = 15")

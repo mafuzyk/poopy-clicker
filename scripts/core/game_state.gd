@@ -9,6 +9,13 @@ const HEAVY_BUTTON := "heavy"
 const LUCKY_PAWS := "lucky"
 const SNEAKY_PROFIT := "sneaky"
 const PANIC_SHIELD := "panic"
+const BOSS_BEACON := "beacon"
+const ESSENCE_MAGNET := "magnet"
+const MISSION_RADAR := "radar"
+const CLEANSE := "cleanse"
+const FRENZY := "frenzy"
+const SKILL_SHIELD := "shield"
+const COINBURST := "coinburst"
 
 const SECRET_UPGRADE_COSTS := {
 	GOOBER_CHARM: 8,
@@ -16,6 +23,13 @@ const SECRET_UPGRADE_COSTS := {
 	LUCKY_PAWS: 15,
 	SNEAKY_PROFIT: 20,
 	PANIC_SHIELD: 18,
+	BOSS_BEACON: 25,
+	ESSENCE_MAGNET: 22,
+	MISSION_RADAR: 18,
+	CLEANSE: 30,
+	FRENZY: 40,
+	SKILL_SHIELD: 35,
+	COINBURST: 50,
 }
 
 # Canônico constants.py PERK_DEFS: base_cost e max_level exatos.
@@ -83,7 +97,14 @@ var panic_shield_bought: bool = false
 var boss_beacon_bought: bool = false
 var essence_magnet_bought: bool = false
 var mission_radar_bought: bool = false
+var cleanse_bought: bool = false
+var frenzy_bought: bool = false
+var skill_shield_bought: bool = false
+var coinburst_bought: bool = false
 var mission_state: Dictionary = {"slots": [], "completed_total": 0, "rerolls_used": 0}
+# Transient (não persistido): multiplicadores de active skills (Frenesi/Explosão).
+var frenzy_mult := 1.0
+var coinburst_mult := 1.0
 
 
 func add_money(amount: int) -> void:
@@ -446,10 +467,11 @@ func register_goober_click(type_id: String, progress_reward: int, base_coins: in
 	if not secret_shop_unlocked and goober_click_progress >= SECRET_SHOP_UNLOCK_CLICKS:
 		secret_shop_unlocked = true
 	if secret_shop_unlocked:
-		var coins: int = maxi(0, base_coins)
-		coins += prestige_level / 2
+		# Canônico: (base + prestige//2) * coinburst; Lucky *coinburst; special_coin_bonus não multiplicado.
+		var cmult: float = coinburst_mult
+		var coins: int = int(float(maxi(0, base_coins) + prestige_level / 2) * cmult)
 		if lucky_paws_bought and type_id != "normal":
-			coins += 1
+			coins += int(1.0 * cmult)
 		coins += maxi(0, extra_coins)
 		goober_coins += coins
 	changed.emit()
@@ -480,16 +502,9 @@ func register_button_click() -> void:
 
 func get_secret_upgrades_bought_count() -> int:
 	var count := 0
-	if goober_charm_bought:
-		count += 1
-	if heavy_button_bought:
-		count += 1
-	if lucky_paws_bought:
-		count += 1
-	if sneaky_profit_bought:
-		count += 1
-	if panic_shield_bought:
-		count += 1
+	for upgrade in SECRET_UPGRADE_COSTS:
+		if is_secret_upgrade_bought(upgrade):
+			count += 1
 	return count
 
 
@@ -508,6 +523,20 @@ func is_secret_upgrade_bought(upgrade: String) -> bool:
 		return sneaky_profit_bought
 	if upgrade == PANIC_SHIELD:
 		return panic_shield_bought
+	if upgrade == BOSS_BEACON:
+		return boss_beacon_bought
+	if upgrade == ESSENCE_MAGNET:
+		return essence_magnet_bought
+	if upgrade == MISSION_RADAR:
+		return mission_radar_bought
+	if upgrade == CLEANSE:
+		return cleanse_bought
+	if upgrade == FRENZY:
+		return frenzy_bought
+	if upgrade == SKILL_SHIELD:
+		return skill_shield_bought
+	if upgrade == COINBURST:
+		return coinburst_bought
 	return false
 
 
@@ -527,6 +556,20 @@ func try_buy_secret_upgrade(upgrade: String) -> bool:
 		sneaky_profit_bought = true
 	elif upgrade == PANIC_SHIELD:
 		panic_shield_bought = true
+	elif upgrade == BOSS_BEACON:
+		boss_beacon_bought = true
+	elif upgrade == ESSENCE_MAGNET:
+		essence_magnet_bought = true
+	elif upgrade == MISSION_RADAR:
+		mission_radar_bought = true
+	elif upgrade == CLEANSE:
+		cleanse_bought = true
+	elif upgrade == FRENZY:
+		frenzy_bought = true
+	elif upgrade == SKILL_SHIELD:
+		skill_shield_bought = true
+	elif upgrade == COINBURST:
+		coinburst_bought = true
 
 	changed.emit()
 	return true
