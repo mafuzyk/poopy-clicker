@@ -25,6 +25,7 @@ const HEAVY_BUTTON_PUSH_PENALTY := 3.0
 const HEAVY_BUTTON_PUSH_MIN := 2.0
 const PANIC_SHIELD_PUSH_PENALTY := 10.0
 const PANIC_SHIELD_PUSH_MIN := 12.0
+const NORMAL_REFERENCE_PUSH := 6.0
 
 signal defeated
 
@@ -188,6 +189,26 @@ func turn_away(btn: Rect2) -> void:
 	apply_facing()
 
 
+func get_effective_normal_push() -> float:
+	var value := push_normal
+	if game_state.heavy_button_bought:
+		value = maxf(HEAVY_BUTTON_PUSH_MIN, value - HEAVY_BUTTON_PUSH_PENALTY)
+	return value
+
+
+func get_effective_panic_push() -> float:
+	var value := push_panic
+	if game_state.panic_shield_bought:
+		value = maxf(PANIC_SHIELD_PUSH_MIN, value - PANIC_SHIELD_PUSH_PENALTY)
+	return value
+
+
+func get_current_push_force() -> float:
+	if state == State.PANIC:
+		return get_effective_panic_push()
+	return get_effective_normal_push()
+
+
 func push_button(button: Control, bounds: Rect2, delta: float) -> void:
 	if escaping or button == null:
 		return
@@ -217,15 +238,21 @@ func push_button(button: Control, bounds: Rect2, delta: float) -> void:
 	if inward == Vector2.ZERO:
 		return
 
-	# O botao sai da frente na mesma velocidade do goober: ele carrega o botao sem atravessar.
-	var max_x := maxf(BUTTON_MARGIN, bounds.size.x - button.size.x - BUTTON_MARGIN)
-	var max_y := maxf(BUTTON_MARGIN, bounds.size.y - button.size.y - BUTTON_MARGIN)
+	# Forca real de push: velocidade do goober escalada pela forca do tipo
+	# (push_normal/push_panic) com upgrades do canônico aplicados.
+	var push_scale := get_current_push_force() / NORMAL_REFERENCE_PUSH
+	var movement := velocity * push_scale * delta
+
+	var min_x := bounds.position.x + BUTTON_MARGIN
+	var min_y := bounds.position.y + BUTTON_MARGIN
+	var max_x := maxf(min_x, bounds.end.x - button.size.x - BUTTON_MARGIN)
+	var max_y := maxf(min_y, bounds.end.y - button.size.y - BUTTON_MARGIN)
 	var new_x := button.position.x
 	var new_y := button.position.y
 	if inward.x != 0.0:
-		new_x = clampf(button.position.x + velocity.x * delta, BUTTON_MARGIN, max_x)
+		new_x = clampf(button.position.x + movement.x, min_x, max_x)
 	if inward.y != 0.0:
-		new_y = clampf(button.position.y + velocity.y * delta, BUTTON_MARGIN, max_y)
+		new_y = clampf(button.position.y + movement.y, min_y, max_y)
 	var old_x := button.position.x
 	var old_y := button.position.y
 	button.position = Vector2(new_x, new_y)
