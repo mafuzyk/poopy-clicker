@@ -7,6 +7,8 @@ const ClickController = preload("res://scripts/systems/click_controller.gd")
 const SaveManager = preload("res://scripts/systems/save_manager.gd")
 const GooberManager = preload("res://scripts/goobers/goober_manager.gd")
 const ComboManager = preload("res://scripts/systems/combo_manager.gd")
+const EventManager = preload("res://scripts/systems/event_manager.gd")
+const EventBanner = preload("res://scripts/ui/event_banner.gd")
 const ShopUI = preload("res://scripts/ui/shop_ui.gd")
 const SecretShopUI = preload("res://scripts/ui/secret_shop_ui.gd")
 const AchievementManager = preload("res://scripts/achievements/achievement_manager.gd")
@@ -26,6 +28,8 @@ var click_controller: ClickController
 var save_manager: SaveManager
 var goober_manager: GooberManager
 var combo_manager: ComboManager
+var event_manager: EventManager
+var event_banner: EventBanner
 
 var click_button: Button
 var auto_clicker_timer: Timer
@@ -45,6 +49,7 @@ func _ready() -> void:
 	setup_save()
 	create_goober_manager()
 	create_combo_manager()
+	create_event_manager()
 	build_ui()
 	setup_click_controller()
 	setup_auto_clicker()
@@ -97,6 +102,22 @@ func create_combo_manager() -> void:
 	add_child(combo_manager)
 
 
+func create_event_manager() -> void:
+	event_manager = EventManager.new()
+	event_manager.name = "EventManager"
+	event_manager.setup(game_state)
+	event_manager.event_started.connect(_apply_event_modifiers)
+	event_manager.event_ended.connect(_apply_event_modifiers)
+	add_child(event_manager)
+
+
+func _apply_event_modifiers(_id: String = "", _definition: Dictionary = {}) -> void:
+	if click_controller == null:
+		return
+	click_controller.set_event_scale_multiplier(event_manager.get_float_modifier("scale_mult", 1.0))
+	click_controller.set_event_move_multiplier(event_manager.get_float_modifier("move_mult", 1.0))
+
+
 func setup_goobers() -> void:
 	goober_manager.setup(click_button, game_state)
 
@@ -116,6 +137,10 @@ func build_ui() -> void:
 	click_button.size = Layout.CLICK_BUTTON_SIZE
 	click_button.add_theme_font_size_override("font_size", 24)
 	add_child(click_button)
+
+	event_banner = EventBanner.new()
+	event_banner.setup(event_manager)
+	add_child(event_banner)
 
 
 func setup_panels() -> void:
@@ -229,17 +254,40 @@ func setup_auto_clicker() -> void:
 
 
 func on_click() -> void:
-	# Canônico: ganho usa o multiplicador ATUAL; só depois o combo incrementa.
+	# Canônico: base click × event click_mult × combo ATUAL; só depois incrementa combo.
 	var base_gain: int = economy.get_click_value()
-	var click_gain: int = int(float(base_gain) * game_state.get_combo_multiplier())
+	var click_gain: int = compute_click_gain(
+		base_gain,
+		event_manager.get_float_modifier("click_mult", 1.0),
+		game_state.get_combo_multiplier()
+	)
 	game_state.register_button_click()
 	game_state.add_money(click_gain)
-	combo_manager.register_manual_click()
+	combo_manager.register_manual_click(combo_grace_ms_to_seconds(
+		event_manager.get_float_modifier("combo_grace", 0.0)
+	))
 	goober_manager.register_click()
 
 
 func on_auto_click() -> void:
-	game_state.add_money(economy.get_auto_value())
+	var gain: int = compute_auto_gain(
+		economy.get_auto_value(),
+		event_manager.get_float_modifier("auto_mult", 1.0)
+	)
+	game_state.add_money(gain)
+
+
+static func compute_click_gain(base_gain: int, event_click_mult: float, combo_mult: float) -> int:
+	return int(float(base_gain) * event_click_mult * combo_mult)
+
+
+static func compute_auto_gain(base_gain: int, event_auto_mult: float) -> int:
+	return int(float(base_gain) * event_auto_mult)
+
+
+# combo_grace no canônico é ms (EVENT_INFO); ComboManager usa segundos.
+static func combo_grace_ms_to_seconds(grace_ms: float) -> float:
+	return grace_ms / 1000.0
 
 
 func on_achievement_unlocked(id: String) -> void:

@@ -8,6 +8,10 @@ const SaveManager = preload("res://scripts/systems/save_manager.gd")
 const Goober = preload("res://scripts/goobers/goober.gd")
 const GooberCatalog = preload("res://scripts/goobers/goober_catalog.gd")
 const AchievementManager = preload("res://scripts/achievements/achievement_manager.gd")
+const EventCatalog = preload("res://scripts/data/event_catalog.gd")
+const EventManager = preload("res://scripts/systems/event_manager.gd")
+const ClickController = preload("res://scripts/systems/click_controller.gd")
+const Main = preload("res://main.gd")
 
 var failures := 0
 var checks := 0
@@ -34,6 +38,14 @@ func _initialize() -> void:
 	_test_combo_highest()
 	_test_combo_achievements()
 	_test_combo_save_and_migration()
+	_test_event_catalog()
+	_test_rarity_selection_two_phase()
+	_test_random_trigger_roll()
+	_test_event_modifiers()
+	_test_event_payout_and_grace_conversion()
+	_test_scale_composition()
+	_test_events_achievements()
+	_test_events_seen_persistence()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -196,7 +208,7 @@ func _test_combo_achievements() -> void:
 		total += 1
 	for id2: String in combo_ids:
 		check(AchievementManager.DEFINITIONS.has(id2), "achievement %s definido" % id2)
-	check(total == 31, "total achievements = 31 (era 27 + 4 combo), atual %d" % total)
+	check(total == 33, "total achievements = 33 (27 + 4 combo + 2 events), atual %d" % total)
 
 
 func _write_test_save(data: Dictionary, path: String) -> void:
@@ -296,3 +308,203 @@ func _test_save_load_v2() -> void:
 	legacy_loader.set_save_path_for_test("user://test_legacy.json")
 	check(legacy_loader.load(), "load v1 ok")
 	check(legacy_state.get_money_earned_total() == 777, "migration v1: money_earned <- lifetime_money")
+
+
+func _test_event_catalog() -> void:
+	check(EventCatalog.count() == 35, "catalogo tem 35 EVENT_INFO")
+	check(EventCatalog.get_rarity_weight("common") == 5.0, "weight common = 5.0")
+	check(EventCatalog.get_rarity_weight("rare") == 2.5, "weight rare = 2.5")
+	check(EventCatalog.get_rarity_weight("epic") == 1.2, "weight epic = 1.2")
+	check(EventCatalog.get_rarity_weight("legendary") == 0.5, "weight legendary = 0.5")
+	check(EventCatalog.get_rarity_weight("mythic") == 0.15, "weight mythic = 0.15")
+	check(EventCatalog.get_rarity_label("common") == "Comum", "label common = Comum")
+	check(EventCatalog.get_rarity_label("rare") == "Raro", "label rare = Raro")
+	check(EventCatalog.get_rarity_label("epic") == "Épico", "label epic = Épico")
+	check(EventCatalog.get_rarity_label("legendary") == "Lendário", "label legendary = Lendário")
+	check(EventCatalog.get_rarity_label("mythic") == "Mítico", "label mythic = Mítico")
+	check(EventCatalog.CORE_ENABLED_IDS.size() == 7, "pool core tem 7 eventos habilitados")
+
+	var dc: Dictionary = EventCatalog.get_event("double_click")
+	check(bool(dc.get("good", false)), "double_click good = true")
+	check(str(dc.get("rarity", "")) == "rare", "double_click rarity = rare")
+	check(int(dc.get("duration", 0)) == 8, "double_click duration = 8")
+	check(is_equal_approx(float(dc.get("click_mult", 0.0)), 2.0), "double_click click_mult = 2.0")
+	var sb: Dictionary = EventCatalog.get_event("snack_break")
+	check(int(sb.get("combo_grace", 0)) == 900, "snack_break combo_grace = 900 (ms no catalogo)")
+	check(str(sb.get("rarity", "")) == "common", "snack_break rarity = common")
+	check(int(sb.get("duration", 0)) == 6, "snack_break duration = 6")
+
+
+func _test_rarity_selection_two_phase() -> void:
+	var rarities: Array = EventCatalog.RARITY_INFO.keys()
+	var weights: Array = []
+	for rarity in rarities:
+		weights.append(EventCatalog.get_rarity_weight(rarity))
+	var total := 0.0
+	for w in weights:
+		total += float(w)
+	check(is_equal_approx(total, 9.35), "soma dos weights = 9.35")
+
+	check(EventCatalog.pick_rarity_from_roll(rarities, weights, 0.0) == "common", "roll 0 -> common")
+	check(EventCatalog.pick_rarity_from_roll(rarities, weights, 0.999) == "mythic", "roll .999 -> mythic")
+	var common_boundary: float = 5.0 / total
+	check(EventCatalog.pick_rarity_from_roll(rarities, weights, common_boundary - 0.001) == "common", "antes da fronteira -> common")
+	check(EventCatalog.pick_rarity_from_roll(rarities, weights, common_boundary + 0.001) == "rare", "depois da fronteira -> rare")
+
+	var candidates: Array = EventCatalog.CORE_ENABLED_IDS.duplicate()
+	var chosen: String = EventCatalog.choose_event(candidates, {}, common_boundary + 0.001, 0.0)
+	check(chosen != "", "choose_event retorna candidato")
+	check(str(EventCatalog.EVENT_INFO[chosen]["rarity"]) == "rare", "candidato pertence a rarity sorteada (fase 2)")
+	var rare_ids: Array = []
+	for id in candidates:
+		if str(EventCatalog.EVENT_INFO[id]["rarity"]) == "rare":
+			rare_ids.append(id)
+	check(rare_ids.size() == 3, "pool core tem 3 eventos rare (2x click, 2x auto, chaos): %s" % str(rare_ids))
+	check(rare_ids.has(chosen), "candidato sorteado esta entre os rare do pool")
+
+	check(EventCatalog.pick_candidate_from_roll(["a", "b"], 0.0) == "a", "candidate roll 0 -> primeiro")
+	check(EventCatalog.pick_candidate_from_roll(["a", "b"], 0.999) == "b", "candidate roll .999 -> ultimo")
+	var with_mod := EventCatalog.choose_event(candidates, {"rare": 1.08, "epic": 1.08}, 0.0, 0.0)
+	check(EventCatalog.CORE_ENABLED_IDS.has(with_mod), "modifiers de rarity nao quebram selecao (%s)" % with_mod)
+
+
+func _test_random_trigger_roll() -> void:
+	var state := GameState.new()
+	var manager := EventManager.new()
+	manager.setup(state)
+	root.add_child(manager)
+
+	check(not manager.try_random_event(0.23, 0.0, 0.0), "trigger roll > 0.22 nao inicia")
+	check(not manager.has_active_event(), "sem evento ativo apos roll alto")
+
+	check(manager.try_random_event(0.22, 0.0, 0.0), "trigger roll == 0.22 inicia")
+	check(manager.has_active_event(), "evento ativo apos roll == 0.22")
+	check(EventCatalog.CORE_ENABLED_IDS.has(manager.get_active_event_id()), "evento sorteado pertence ao pool core")
+	manager.end_event()
+
+	check(manager.try_random_event(0.21, 0.0, 0.0), "trigger roll < 0.22 inicia")
+	var active_id := manager.get_active_event_id()
+	check(not manager.try_random_event(0.0, 0.0, 0.0), "random check com evento ativo nao substitui")
+	check(manager.get_active_event_id() == active_id, "evento ativo permanece o mesmo")
+	check(state.get_events_seen() == 2, "events_seen = 2 (um por start_event)")
+	manager.end_event()
+
+	manager.triggers_blocked = true
+	check(not manager.try_random_event(0.0, 0.0, 0.0), "triggers_blocked bloqueia random check")
+	manager.triggers_blocked = false
+
+
+func _check_modifier(manager: EventManager, id: String, key: String, expected: float) -> void:
+	manager.force_start_event(id)
+	check(is_equal_approx(manager.get_float_modifier(key, 1.0), expected), "%s: %s == %.2f" % [id, key, expected])
+	manager.end_event()
+
+
+func _test_event_modifiers() -> void:
+	var state := GameState.new()
+	var manager := EventManager.new()
+	manager.setup(state)
+	root.add_child(manager)
+
+	check(is_equal_approx(manager.get_float_modifier("click_mult", 1.0), 1.0), "sem evento: click_mult 1.0")
+	check(is_equal_approx(manager.get_float_modifier("auto_mult", 1.0), 1.0), "sem evento: auto_mult 1.0")
+	check(is_equal_approx(manager.get_float_modifier("move_mult", 1.0), 1.0), "sem evento: move_mult 1.0")
+	check(is_equal_approx(manager.get_float_modifier("scale_mult", 1.0), 1.0), "sem evento: scale_mult 1.0")
+	check(is_equal_approx(manager.get_float_modifier("combo_grace", 0.0), 0.0), "sem evento: combo_grace 0")
+	check(not manager.get_bool_modifier("invert_colors", false), "sem evento: invert_colors false")
+
+	_check_modifier(manager, "double_click", "click_mult", 2.0)
+	_check_modifier(manager, "double_auto", "auto_mult", 2.0)
+	_check_modifier(manager, "big_button", "scale_mult", 1.22)
+	_check_modifier(manager, "tiny_button", "scale_mult", 0.78)
+	_check_modifier(manager, "chaos", "move_mult", 1.35)
+	_check_modifier(manager, "calm", "move_mult", 0.65)
+	_check_modifier(manager, "snack_break", "combo_grace", 900.0)
+
+	check(is_equal_approx(manager.get_float_modifier("click_mult", 1.0), 1.0), "apos end_event: click_mult volta 1.0")
+	check(not manager.start_event("nao_existe"), "id invalido rejeitado")
+	check(manager.start_event("double_click"), "start_event valido")
+	check(not manager.start_event("calm"), "start_event sem replace nao substitui ativo")
+	check(manager.get_active_event_id() == "double_click", "ativo segue double_click")
+	check(manager.start_event("calm", true), "replace ativo substitui evento")
+	check(manager.get_active_event_id() == "calm", "ativo agora e calm")
+	manager.end_event()
+	check(not manager.has_active_event(), "end_event limpa estado")
+
+
+func _test_event_payout_and_grace_conversion() -> void:
+	check(Main.compute_click_gain(100, 2.0, 1.5) == 300, "payout click: int(100 * 2.0 * 1.5) = 300")
+	check(Main.compute_auto_gain(100, 2.0) == 200, "payout auto: int(100 * 2.0) = 200")
+	check(Main.compute_click_gain(100, 1.0, 1.0) == 100, "sem eventos: payout click = base")
+	check(is_equal_approx(Main.combo_grace_ms_to_seconds(900.0), 0.9), "combo_grace 900 ms -> 0.9 s")
+
+
+func _test_scale_composition() -> void:
+	var state := GameState.new()
+	state.click_level = 10
+	state.auto_level = 15
+	var button := Button.new()
+	var controller := ClickController.new()
+	controller.game_state = state
+	controller.click_button = button
+
+	controller.update_button_scale()
+	check(is_equal_approx(button.scale.x, 0.9), "progressao 25 upgrades -> escala 0.90")
+	controller.set_event_scale_multiplier(1.22)
+	check(is_equal_approx(button.scale.x, 0.9 * 1.22), "big_button compoe: 0.90 * 1.22 = 1.098")
+	controller.set_event_scale_multiplier(1.0)
+	check(is_equal_approx(button.scale.x, 0.9), "evento termina: volta 0.90 (NAO 1.0)")
+	controller.set_event_scale_multiplier(0.78)
+	check(is_equal_approx(button.scale.x, 0.9 * 0.78), "tiny_button compoe: 0.90 * 0.78")
+
+
+func _test_events_achievements() -> void:
+	var state := GameState.new()
+	var manager := AchievementManager.new()
+	manager.setup(state)
+	for i in range(24):
+		state.register_event_seen()
+	manager.evaluate()
+	check(not manager.is_unlocked("events_25"), "24 eventos: events_25 locked")
+	state.register_event_seen()
+	manager.evaluate()
+	check(manager.is_unlocked("events_25"), "25 eventos: events_25 unlock")
+	check(manager.get_progress("events_100") == Vector2i(25, 100), "progress events_100 = 25/100")
+	for i in range(75):
+		state.register_event_seen()
+	manager.evaluate()
+	check(manager.is_unlocked("events_100"), "100 eventos: events_100 unlock")
+
+
+func _test_events_seen_persistence() -> void:
+	var state := GameState.new()
+	for i in range(7):
+		state.register_event_seen()
+	var save_manager := SaveManager.new()
+	save_manager.setup(state)
+	save_manager.set_save_path_for_test("user://test_events_seen.json")
+	save_manager.save()
+
+	var loaded := GameState.new()
+	var loader := SaveManager.new()
+	loader.setup(loaded)
+	loader.set_save_path_for_test("user://test_events_seen.json")
+	check(loader.load(), "load events_seen ok")
+	check(loaded.get_events_seen() == 7, "events_seen roundtrip = 7")
+
+	# Save v3 antigo sem events_seen: normalizado retroativamente para 0.
+	var old_v3 := {
+		"save_version": 3,
+		"money": 5,
+		"lifetime_money": 5,
+		"stats": {"money_earned": 5, "highest_combo": 0},
+		"click_level": 0,
+	}
+	_write_test_save(old_v3, "user://test_old_v3.json")
+	var old_state := GameState.new()
+	var old_loader := SaveManager.new()
+	old_loader.setup(old_state)
+	old_loader.set_save_path_for_test("user://test_old_v3.json")
+	check(old_loader.load(), "load v3 antigo ok")
+	check(old_state.get_events_seen() == 0, "v3 antigo: events_seen normalizado para 0")
+	check(old_state.get_money_earned_total() == 5, "v3 antigo: money_earned preservado")

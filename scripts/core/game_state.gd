@@ -20,7 +20,7 @@ const SECRET_UPGRADE_COSTS := {
 
 var money: int = 0
 var lifetime_money: int = 0
-var stats: Dictionary = {"money_earned": 0, "highest_combo": 0}
+var stats: Dictionary = {"money_earned": 0, "highest_combo": 0, "events_seen": 0}
 var combo_count: int = 0
 var combo_multiplier: float = 1.0
 var click_level: int = 0
@@ -73,6 +73,15 @@ func get_combo_multiplier() -> float:
 
 func get_highest_combo() -> int:
 	return int(stats.get("highest_combo", 0))
+
+
+func register_event_seen() -> void:
+	stats["events_seen"] = int(stats.get("events_seen", 0)) + 1
+	changed.emit()
+
+
+func get_events_seen() -> int:
+	return int(stats.get("events_seen", 0))
 
 
 func set_money(value: int) -> void:

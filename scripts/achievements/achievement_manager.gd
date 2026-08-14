@@ -36,6 +36,8 @@ const DEFINITIONS := {
 	"combo_75": {"name": "Mão impossível", "hint": "Chegue a combo x75."},
 	"combo_150": {"name": "Incontrolável", "hint": "Chegue a combo x150."},
 	"combo_300": {"name": "Deusa do ritmo", "hint": "Chegue a combo x300."},
+	"events_25": {"name": "Eventeira", "hint": "Presencie 25 eventos."},
+	"events_100": {"name": "Caos programado", "hint": "Presencie 100 eventos."},
 }
 
 var game_state: GameState
@@ -130,6 +132,10 @@ func get_progress(id: String) -> Vector2i:
 		return Vector2i(game_state.get_highest_combo(), 150)
 	if id == "combo_300":
 		return Vector2i(game_state.get_highest_combo(), 300)
+	if id == "events_25":
+		return Vector2i(game_state.get_events_seen(), 25)
+	if id == "events_100":
+		return Vector2i(game_state.get_events_seen(), 100)
 	return Vector2i(-1, -1)
 
 
@@ -207,4 +213,8 @@ func _is_met(id: String) -> bool:
 		return game_state.get_highest_combo() >= 150
 	if id == "combo_300":
 		return game_state.get_highest_combo() >= 300
+	if id == "events_25":
+		return game_state.get_events_seen() >= 25
+	if id == "events_100":
+		return game_state.get_events_seen() >= 100
 	return false

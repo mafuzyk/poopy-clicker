@@ -112,7 +112,7 @@ func load() -> bool:
 	game_state.set_money(int(data.get("money", 0)))
 	game_state.lifetime_money = int(data.get("lifetime_money", 0))
 	var raw_stats: Variant = data.get("stats", {})
-	game_state.stats = raw_stats if typeof(raw_stats) == TYPE_DICTIONARY else {}
+	game_state.stats = _normalize_stats(raw_stats if typeof(raw_stats) == TYPE_DICTIONARY else {})
 	game_state.combo_count = int(data.get("combo_count", 0))
 	game_state.combo_multiplier = float(data.get("combo_multiplier", 1.0))
 	game_state.click_level = int(data.get("click_level", 0))
@@ -167,3 +167,13 @@ func _migrate_v2_to_v3(data: Dictionary) -> Dictionary:
 	data["combo_count"] = 0
 	data["combo_multiplier"] = 1.0
 	return data
+
+
+# Campos opcionais de stats ganham defaults retroativamente sem bump de schema:
+# saves v1/v2/v3 antigos chegam aqui sem events_seen e continuam válidos.
+func _normalize_stats(stats: Dictionary) -> Dictionary:
+	var normalized := stats.duplicate(true)
+	normalized["money_earned"] = int(normalized.get("money_earned", 0))
+	normalized["highest_combo"] = int(normalized.get("highest_combo", 0))
+	normalized["events_seen"] = int(normalized.get("events_seen", 0))
+	return normalized

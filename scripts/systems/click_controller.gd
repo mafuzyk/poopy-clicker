@@ -14,6 +14,9 @@ const SCALE_PER_UPGRADE: float = 0.004
 
 var click_button: Button
 var game_state: GameState
+# Multipliers de evento fornecidos pelo main (controller não conhece EventManager).
+var event_move_multiplier := 1.0
+var event_scale_multiplier := 1.0
 
 
 func setup(button: Button, state: GameState) -> void:
@@ -26,10 +29,20 @@ func setup(button: Button, state: GameState) -> void:
 	center_button()
 
 
+func set_event_move_multiplier(value: float) -> void:
+	event_move_multiplier = maxf(0.0, value)
+
+
+func set_event_scale_multiplier(value: float) -> void:
+	event_scale_multiplier = maxf(0.0, value)
+	update_button_scale()
+
+
 func update_button_scale() -> void:
 	var total_upgrades: int = game_state.click_level + game_state.auto_level
 	var base_scale: float = maxf(MIN_BUTTON_SCALE, 1.0 - total_upgrades * SCALE_PER_UPGRADE)
-	click_button.scale = Vector2.ONE * base_scale
+	# Composição: escala de progressão × escala de evento (nunca substitui).
+	click_button.scale = Vector2.ONE * (base_scale * event_scale_multiplier)
 
 
 func get_difficulty_step() -> int:
@@ -47,7 +60,7 @@ func get_play_area_rect() -> Rect2:
 
 
 func move_click_button_randomly() -> void:
-	var step: int = get_difficulty_step()
+	var step: int = maxi(1, int(round(float(get_difficulty_step()) * event_move_multiplier)))
 	var area: Rect2 = get_play_area_rect()
 
 	var drift_x: float = float(randi_range(-step, step))
