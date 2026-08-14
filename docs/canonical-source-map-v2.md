@@ -87,6 +87,9 @@
 **Divergência deliberada (adaptação):**
 - Aplicação temporal do push: o Python canônico aplica `push_x = vx * push` / `push_y = vy * push` com `push_cooldown = 8` ticks (~240 ms). No Godot, o deslocamento é `velocity * (força atual / 6.0) * delta` contínuo enquanto há contato, preservando a identidade "goober carrega o botão" sem teleporte. Forças e fórmulas de Heavy/Panic são idênticas ao canônico (`max(2, push-3)` / `max(12, push-10)`); apenas a integração temporal difere. Validar o *feel* no Android antes de considerar fidelidade fechada; alinhar o ritmo de push ao canônico se o feel pedir.
 
+**Dívida técnica conhecida (desnecessário corrigir agora):**
+- `save_manager.load()` aplica os campos via setters, e `set_money()` emite `changed` com estado parcial; a emissão final de `changed` ao término do load é o que garante que consumidores (achievements/painéis) reavaliem só com o estado completo. Nenhum comportamento quebra, mas quando o save crescer (prestige/perks/events/etc.), consolidar em bulk-load: aplicar todos os campos sem emitir `changed` e emitir uma única vez ao final (`_apply_bulk(data)` + `changed.emit()`).
+
 ## Processo / padrões Godot (Spec V2)
 
 - Sempre registrar o commit canônico ao sincronizar (tabela acima).
