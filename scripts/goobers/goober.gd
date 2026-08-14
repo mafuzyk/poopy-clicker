@@ -220,9 +220,12 @@ func push_button(button: Control, bounds: Rect2, delta: float) -> void:
 	if state != State.WALK and state != State.PANIC:
 		return
 
-	var btn := button.get_global_rect()
+	# Tamanho efetivo do botão (size × scale): durante big/tiny_button o clamp e o
+	# contato precisam enxergar o retângulo real, não o size pré-transform.
+	var effective_size := button.size * button.scale
+	var btn_center := button.position + effective_size / 2.0
 	var goober_rect := get_rect().grow(-half_size * PUSH_CONTACT_GOOBER_SHRINK)
-	var contact_rect := btn.grow(-button.size.x * PUSH_CONTACT_BUTTON_SHRINK)
+	var contact_rect := Rect2(button.position, effective_size).grow(-effective_size.x * PUSH_CONTACT_BUTTON_SHRINK)
 	if not goober_rect.intersects(contact_rect):
 		if was_pushing:
 			was_pushing = false
@@ -232,13 +235,13 @@ func push_button(button: Control, bounds: Rect2, delta: float) -> void:
 	was_pushing = true
 
 	var inward := Vector2.ZERO
-	if velocity.x > 0.0 and position.x < btn.get_center().x:
+	if velocity.x > 0.0 and position.x < btn_center.x:
 		inward.x = 1.0
-	elif velocity.x < 0.0 and position.x > btn.get_center().x:
+	elif velocity.x < 0.0 and position.x > btn_center.x:
 		inward.x = -1.0
-	if velocity.y > 0.0 and position.y < btn.get_center().y:
+	if velocity.y > 0.0 and position.y < btn_center.y:
 		inward.y = 1.0
-	elif velocity.y < 0.0 and position.y > btn.get_center().y:
+	elif velocity.y < 0.0 and position.y > btn_center.y:
 		inward.y = -1.0
 	if inward == Vector2.ZERO:
 		return
@@ -250,8 +253,8 @@ func push_button(button: Control, bounds: Rect2, delta: float) -> void:
 
 	var min_x := bounds.position.x + BUTTON_MARGIN
 	var min_y := bounds.position.y + BUTTON_MARGIN
-	var max_x := maxf(min_x, bounds.end.x - button.size.x - BUTTON_MARGIN)
-	var max_y := maxf(min_y, bounds.end.y - button.size.y - BUTTON_MARGIN)
+	var max_x := maxf(min_x, bounds.end.x - effective_size.x - BUTTON_MARGIN)
+	var max_y := maxf(min_y, bounds.end.y - effective_size.y - BUTTON_MARGIN)
 	var new_x := button.position.x
 	var new_y := button.position.y
 	if inward.x != 0.0:
@@ -269,7 +272,7 @@ func push_button(button: Control, bounds: Rect2, delta: float) -> void:
 		if inward.y != 0.0 and new_y == old_y:
 			velocity.y = 0.0
 		if velocity.length() < 1.0:
-			turn_away(btn)
+			turn_away(Rect2(button.position, effective_size))
 
 
 func jump() -> void:
