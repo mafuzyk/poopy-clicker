@@ -4,8 +4,7 @@ const GameState = preload("res://scripts/core/game_state.gd")
 
 enum State { WALK, IDLE, SCARE, PANIC }
 
-const PANIC_SPEED_MIN_RATIO := 2.2
-const PANIC_SPEED_MAX_RATIO := 3.0
+const PANIC_SPEED_BONUS := 3.0
 const PANIC_VY_RATIO := 0.35
 const SCARE_DURATION := 0.26
 const IDLE_DURATION_MIN := 0.7
@@ -166,9 +165,13 @@ func start_panic() -> void:
 	set_state(State.PANIC, "panic")
 	var direction := 1.0 if position.x < get_viewport_rect().size.x * 0.5 else -1.0
 	var body_size := half_size * 2.0
+	# Canônico (goober.py update_movement): spd = (speed_max + 3) * speed_scale —
+	# o panic é sempre mais rápido que o andar do próprio tipo (speed_scale = 1
+	# enquanto o progression speed multiplier não existir).
+	var spd: float = (speed_max + PANIC_SPEED_BONUS) * body_size
 	velocity = Vector2(
-		direction * randf_range(PANIC_SPEED_MIN_RATIO, PANIC_SPEED_MAX_RATIO) * body_size,
-		randf_range(-PANIC_VY_RATIO, PANIC_VY_RATIO) * body_size
+		direction * spd,
+		randf_range(-PANIC_VY_RATIO, PANIC_VY_RATIO) * spd
 	)
 	apply_facing()
 

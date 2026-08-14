@@ -52,6 +52,7 @@ func _initialize() -> void:
 	_test_controller_capability_snapshot()
 	_test_goober_snapshot_plumbing()
 	_test_panic_reduce_push()
+	_test_panic_speed_canonical()
 	_test_special_reward_gating()
 	_test_click_coin_gating()
 
@@ -651,6 +652,27 @@ func _test_panic_reduce_push() -> void:
 	check(is_equal_approx(goober.get_current_push_force(), maxf(1.0, base - 8.0)), "panic_reduce subtrai do push")
 	goober.event_panic_reduce = 999.0
 	check(is_equal_approx(goober.get_current_push_force(), 1.0), "push clampado em 1.0")
+
+
+func _test_panic_speed_canonical() -> void:
+	# Canônico (goober.py): spd = (speed_max + 3) — o panic NUNCA é mais lento
+	# que o andar do próprio tipo (regressão: speedy 3-4 andava a 4x e fugia a 3x).
+	var catalog := GooberCatalog.new()
+	var state := GameState.new()
+	var checked := 0
+	for id: String in catalog.get_enabled_ids():
+		var data := catalog.get_type(id)
+		var goober := Goober.new()
+		goober.setup(null, 86.0, id, data, state)
+		var body_size: float = 86.0 * float(data["scale"])
+		var walk_max: float = float(data["speed_max"]) * body_size
+		goober.start_panic()
+		var panic_speed: float = absf(goober.velocity.x)
+		check(is_equal_approx(panic_speed, (float(data["speed_max"]) + 3.0) * body_size),
+			"panic %s: speed = speed_max + 3" % id)
+		check(panic_speed > walk_max, "panic %s: mais rapido que o andar maximo" % id)
+		checked += 1
+	check(checked == 16, "16 tipos habilitados verificados (sem bloqueados)")
 
 
 func _test_special_reward_gating() -> void:
