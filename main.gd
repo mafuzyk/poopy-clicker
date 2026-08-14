@@ -330,13 +330,12 @@ func setup_auto_clicker() -> void:
 
 
 func on_click() -> void:
-	# Canônico: base click × event click_mult × combo ATUAL; só depois incrementa combo.
-	var base_gain: int = economy.get_click_value()
-	var click_gain: int = compute_click_gain(
-		base_gain,
-		event_manager.get_float_modifier("click_mult", 1.0),
-		game_state.get_combo_multiplier()
+	# Canônico: base × prestige (em Economy) × event click_mult; combo truncado
+	# DEPOIS, no main. Nunca aplicar o event modifier duas vezes.
+	var event_adjusted_gain: int = economy.get_click_value(
+		event_manager.get_float_modifier("click_mult", 1.0)
 	)
+	var click_gain: int = compute_click_gain(event_adjusted_gain, game_state.get_combo_multiplier())
 	game_state.register_button_click()
 	game_state.add_money(click_gain)
 	game_state.goober_coins += compute_click_coin_grant(
@@ -350,19 +349,14 @@ func on_click() -> void:
 
 
 func on_auto_click() -> void:
-	var gain: int = compute_auto_gain(
-		economy.get_auto_value(),
+	var gain: int = economy.get_auto_value(
 		event_manager.get_float_modifier("auto_mult", 1.0)
 	)
 	game_state.add_money(gain)
 
 
-static func compute_click_gain(base_gain: int, event_click_mult: float, combo_mult: float) -> int:
-	return int(float(base_gain) * event_click_mult * combo_mult)
-
-
-static func compute_auto_gain(base_gain: int, event_auto_mult: float) -> int:
-	return int(float(base_gain) * event_auto_mult)
+static func compute_click_gain(event_adjusted_gain: int, combo_mult: float) -> int:
+	return int(float(event_adjusted_gain) * combo_mult)
 
 
 # combo_grace no canônico é ms (EVENT_INFO); ComboManager usa segundos.

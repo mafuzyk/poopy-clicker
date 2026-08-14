@@ -4,6 +4,7 @@ extends SceneTree
 # Uso: godot --headless --path . --script res://tests/smoke.gd --quit-after 600
 
 const GameState = preload("res://scripts/core/game_state.gd")
+const Economy = preload("res://scripts/systems/economy.gd")
 const SaveManager = preload("res://scripts/systems/save_manager.gd")
 const Goober = preload("res://scripts/goobers/goober.gd")
 const GooberCatalog = preload("res://scripts/goobers/goober_catalog.gd")
@@ -44,6 +45,7 @@ func _initialize() -> void:
 	_test_random_trigger_roll()
 	_test_event_modifiers()
 	_test_event_payout_and_grace_conversion()
+	_test_prestige_economy_truncation()
 	_test_scale_composition()
 	_test_events_achievements()
 	_test_events_seen_persistence()
@@ -472,10 +474,37 @@ func _test_event_modifiers() -> void:
 
 
 func _test_event_payout_and_grace_conversion() -> void:
-	check(Main.compute_click_gain(100, 2.0, 1.5) == 300, "payout click: int(100 * 2.0 * 1.5) = 300")
-	check(Main.compute_auto_gain(100, 2.0) == 200, "payout auto: int(100 * 2.0) = 200")
-	check(Main.compute_click_gain(100, 1.0, 1.0) == 100, "sem eventos: payout click = base")
+	check(Main.compute_click_gain(200, 1.5) == 300, "payout click: int(200 * 1.5) = 300")
+	check(Main.compute_click_gain(100, 1.0) == 100, "sem eventos: payout click = base")
 	check(is_equal_approx(Main.combo_grace_ms_to_seconds(900.0), 0.9), "combo_grace 900 ms -> 0.9 s")
+
+
+func _test_prestige_economy_truncation() -> void:
+	# Tabela dourada canônica (§0.3): truncation ponto a ponto.
+	var state := GameState.new()
+	var econ := Economy.new(state)
+
+	state.click_level = 3
+	check(econ.get_click_value() == 8, "click L3 P0 = 8")
+	state.prestige_level = 1
+	check(econ.get_click_value() == 8, "click L3 P1 = 8 (int(8*1.12))")
+	check(econ.get_click_value(1.6) == 12, "click L3 P1 event1.6 = 12")
+	check(Main.compute_click_gain(econ.get_click_value(1.6), 1.30) == 15, "click L3 P1 event1.6 combo1.30 = 15")
+
+	state.prestige_level = 0
+	state.auto_level = 0
+	check(econ.get_auto_value() == 0, "auto L0 = 0")
+	state.auto_level = 3
+	check(econ.get_auto_value() == 4, "auto L3 P0 = 4")
+	state.prestige_level = 1
+	check(econ.get_auto_value() == 4, "auto L3 P1 = 4")
+	state.prestige_level = 3
+	check(econ.get_auto_value() == 5, "auto L3 P3 = 5 (int(4*1.30))")
+	check(econ.get_auto_value(1.25) == 6, "auto L3 P3 event1.25 = 6")
+
+	state.auto_level = 4
+	state.sneaky_profit_bought = true
+	check(econ.get_auto_value(1.25) == 16, "auto L4 Sneaky P3 event1.25 = 16")
 
 
 func _test_scale_composition() -> void:
