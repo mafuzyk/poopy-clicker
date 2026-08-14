@@ -44,6 +44,10 @@ const DEFINITIONS := {
 	"prestige_10": {"name": "Renascida", "hint": "Chegue ao prestígio 10."},
 	"prestige_25": {"name": "Fênix", "hint": "Chegue ao prestígio 25."},
 	"prestige_50": {"name": "Imortal", "hint": "Chegue ao prestígio 50."},
+	"missions_10": {"name": "Trabalhadora do mês", "hint": "Complete 10 missões."},
+	"missions_30": {"name": "Painel limpo", "hint": "Complete 30 missões."},
+	"missions_50": {"name": "Meta cumprida", "hint": "Complete 50 missões."},
+	"missions_100": {"name": "Missões infinitas", "hint": "Complete 100 missões."},
 }
 
 var game_state: GameState
@@ -154,6 +158,14 @@ func get_progress(id: String) -> Vector2i:
 		return Vector2i(game_state.prestige_level, 25)
 	if id == "prestige_50":
 		return Vector2i(game_state.prestige_level, 50)
+	if id == "missions_10":
+		return Vector2i(int(game_state.mission_state.get("completed_total", 0)), 10)
+	if id == "missions_30":
+		return Vector2i(int(game_state.mission_state.get("completed_total", 0)), 30)
+	if id == "missions_50":
+		return Vector2i(int(game_state.mission_state.get("completed_total", 0)), 50)
+	if id == "missions_100":
+		return Vector2i(int(game_state.mission_state.get("completed_total", 0)), 100)
 	return Vector2i(-1, -1)
 
 
@@ -247,4 +259,12 @@ func _is_met(id: String) -> bool:
 		return game_state.prestige_level >= 25
 	if id == "prestige_50":
 		return game_state.prestige_level >= 50
+	if id == "missions_10":
+		return int(game_state.mission_state.get("completed_total", 0)) >= 10
+	if id == "missions_30":
+		return int(game_state.mission_state.get("completed_total", 0)) >= 30
+	if id == "missions_50":
+		return int(game_state.mission_state.get("completed_total", 0)) >= 50
+	if id == "missions_100":
+		return int(game_state.mission_state.get("completed_total", 0)) >= 100
 	return false

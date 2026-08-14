@@ -60,6 +60,7 @@ func save() -> void:
 		"poopy_essence": game_state.poopy_essence,
 		"prestige_level": game_state.prestige_level,
 		"perks": game_state.perks,
+		"mission_state": game_state.mission_state,
 		"click_level": game_state.click_level,
 		"auto_level": game_state.auto_level,
 		"goober_clicks_total": game_state.goober_clicks_total,
@@ -121,6 +122,8 @@ func load() -> bool:
 	game_state.poopy_essence = int(data.get("poopy_essence", 0))
 	game_state.prestige_level = int(data.get("prestige_level", 0))
 	game_state.perks = _normalize_perks(data.get("perks", {}))
+	var raw_mission: Variant = data.get("mission_state", {})
+	game_state.mission_state = raw_mission if typeof(raw_mission) == TYPE_DICTIONARY else {"slots": [], "completed_total": 0, "rerolls_used": 0}
 	game_state.click_level = int(data.get("click_level", 0))
 	game_state.auto_level = int(data.get("auto_level", 0))
 	game_state.goober_clicks_total = int(data.get("goober_clicks_total", 0))

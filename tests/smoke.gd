@@ -12,6 +12,7 @@ const AchievementManager = preload("res://scripts/achievements/achievement_manag
 const EventCatalog = preload("res://scripts/data/event_catalog.gd")
 const EventManager = preload("res://scripts/systems/event_manager.gd")
 const ComboManager = preload("res://scripts/systems/combo_manager.gd")
+const MissionManager = preload("res://scripts/systems/mission_manager.gd")
 const ClickController = preload("res://scripts/systems/click_controller.gd")
 const GooberManager = preload("res://scripts/goobers/goober_manager.gd")
 const Main = preload("res://main.gd")
@@ -71,6 +72,8 @@ func _initialize() -> void:
 	_test_perks_state_and_purchase()
 	_test_perk_effects()
 	_test_collections_and_synergies()
+	_test_missions()
+	_test_missions_completion()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -234,7 +237,7 @@ func _test_combo_achievements() -> void:
 		total += 1
 	for id2: String in combo_ids:
 		check(AchievementManager.DEFINITIONS.has(id2), "achievement %s definido" % id2)
-	check(total == 39, "total achievements = 39 (33 + 6 prestige/essence), atual %d" % total)
+	check(total == 43, "total achievements = 43 (39 + 4 missions), atual %d" % total)
 
 
 func _write_test_save(data: Dictionary, path: String) -> void:
@@ -1226,3 +1229,53 @@ func _test_collections_and_synergies() -> void:
 	s3.click_level = 3
 	var econ := Economy.new(s3)
 	check(econ.get_click_value() == 8, "click L3 + collector_20 money -> 8")
+
+
+func _test_missions() -> void:
+	var state := GameState.new()
+	var manager := MissionManager.new()
+	manager.setup(state)
+	check(manager.get_max_mission_slots() == 3, "P0: 3 slots")
+	state.prestige_level = 1
+	check(manager.get_max_mission_slots() == 4, "P1: 4 slots")
+	state.prestige_level = 6
+	check(manager.get_max_mission_slots() == 5, "P6: 5 slots")
+	state.prestige_level = 0
+
+	manager.ensure_missions(true)
+	var slots: Array = state.mission_state["slots"]
+	check(slots.size() == 3, "3 missões geradas")
+	for m in slots:
+		check(int(m["target"]) >= 1, "target >= 1")
+		check(int(m["reward_money"]) > 0, "reward_money > 0")
+		check(str(m["key"]) in ["clicks", "money", "goobers", "rare_seen", "boss"], "key valida: %s" % str(m["key"]))
+
+	# mapeamento de progresso.
+	var state2 := GameState.new()
+	var manager2 := MissionManager.new()
+	manager2.setup(state2)
+	state2.bestiary_counts["gold"] = {"seen": 2, "clicked": 1}
+	state2.bestiary_counts["angry"] = {"seen": 1, "clicked": 1}
+	check(manager2.mission_progress_for_key("goobers") == 2, "goobers progress = 2 (gold+angry)")
+	check(manager2.mission_progress_for_key("rare_seen") == 3, "rare_seen = 3 (gold 2 + angry 1)")
+	check(manager2.mission_progress_for_key("boss") == 0, "boss progress 0")
+
+
+func _test_missions_completion() -> void:
+	var state := GameState.new()
+	var manager := MissionManager.new()
+	manager.setup(state)
+	state.mission_state["slots"] = [{
+		"key": "clicks", "title": "t", "description": "d", "target": 10,
+		"progress": 0, "start_value": 0, "reward_type": "mixed",
+		"reward_money": 500, "reward_coins": 3, "claimed": false,
+	}]
+	var money_before := state.get_money_earned_total()
+	var coins_before := state.goober_coins
+	state.button_clicks_total = 10
+	manager.update_missions()
+	check(int(state.mission_state["completed_total"]) == 1, "completed_total 1")
+	check(state.get_money_earned_total() == money_before + 500, "+500 money da missao")
+	check(state.goober_coins == coins_before + 3, "+3 coins da missao")
+	check(state.mission_state["slots"].size() == 3, "slots regenerados para 3")
+	check(int(state.mission_state["slots"][0].get("progress", -1)) == 0, "nova missao progresso 0")

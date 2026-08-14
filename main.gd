@@ -23,6 +23,8 @@ const BestiaryPanel = preload("res://scripts/ui/bestiary_panel.gd")
 const ShellPanel = preload("res://scripts/ui/shell_panel.gd")
 const PrestigePanel = preload("res://scripts/ui/prestige_panel.gd")
 const PerksPanel = preload("res://scripts/ui/perks_panel.gd")
+const MissionsPanel = preload("res://scripts/ui/missions_panel.gd")
+const MissionManager = preload("res://scripts/systems/mission_manager.gd")
 
 
 var game_state: GameState
@@ -48,6 +50,8 @@ var achievements_panel: AchievementsPanel
 var bestiary_panel: BestiaryPanel
 var prestige_panel: PrestigePanel
 var perks_panel: PerksPanel
+var missions_panel: MissionsPanel
+var mission_manager: MissionManager
 
 
 func _ready() -> void:
@@ -56,6 +60,7 @@ func _ready() -> void:
 	create_goober_manager()
 	create_combo_manager()
 	create_event_manager()
+	create_mission_manager()
 	build_ui()
 	setup_click_controller()
 	setup_auto_clicker()
@@ -64,6 +69,7 @@ func _ready() -> void:
 	setup_toast()
 	setup_goobers()
 	save_manager.load()
+	mission_manager.ensure_missions()
 	if game_state.combo_count > 0:
 		combo_manager.restart_decay()
 	refresh_ui()
@@ -115,6 +121,14 @@ func create_event_manager() -> void:
 	event_manager.event_started.connect(_on_event_started)
 	event_manager.event_ended.connect(_on_event_ended)
 	add_child(event_manager)
+
+
+func create_mission_manager() -> void:
+	mission_manager = MissionManager.new()
+	mission_manager.name = "MissionManager"
+	mission_manager.setup(game_state)
+	game_state.changed.connect(mission_manager.update_missions)
+	add_child(mission_manager)
 
 
 # start: aplica definition + derived capabilities do evento INICIADO.
@@ -254,7 +268,6 @@ func setup_panels() -> void:
 	menu_panel.save_requested.connect(save_now)
 	panel_manager.register_surface("menu", menu_panel)
 
-	_register_shell("missions", "MISSÕES", "Objetivos gerados com progresso de clique, dinheiro e goobers.", "chega com o sistema de missões (spec §18).")
 	prestige_panel = PrestigePanel.new()
 	prestige_panel.setup(game_state)
 	prestige_panel.prestige_confirmed.connect(_on_prestige_confirmed)
@@ -263,6 +276,9 @@ func setup_panels() -> void:
 	perks_panel.setup(game_state)
 	perks_panel.buy_perk_requested.connect(on_buy_perk)
 	panel_manager.register_surface("perks", perks_panel)
+	missions_panel = MissionsPanel.new()
+	missions_panel.setup(game_state)
+	panel_manager.register_surface("missions", missions_panel)
 	_register_shell("stats", "ESTATÍSTICAS", "Histórico completo da partida: cliques, goobers, ganhos totais.", "chega com o sistema de stats (spec §25).")
 	_register_shell("themes", "TEMAS", "Aparência do jogo: fundo, cores e estilo.", "chega com os temas (spec §21).")
 	_register_shell("settings", "CONFIGURAÇÕES", "Som, texto, desempenho e acessibilidade.", "chega com as configurações (spec §22).")

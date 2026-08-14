@@ -83,6 +83,7 @@ var panic_shield_bought: bool = false
 var boss_beacon_bought: bool = false
 var essence_magnet_bought: bool = false
 var mission_radar_bought: bool = false
+var mission_state: Dictionary = {"slots": [], "completed_total": 0, "rerolls_used": 0}
 
 
 func add_money(amount: int) -> void:
