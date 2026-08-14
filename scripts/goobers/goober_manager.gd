@@ -34,6 +34,8 @@ var goobers: Array[Goober] = []
 var click_spawn_counter := 0
 var passive_spawn_timer := PASSIVE_SPAWN_INTERVAL
 var boss_active := false
+var goober_container: Node
+var bounds_control: Control
 
 # Snapshot de modificadores de evento (fornecido pelo main; manager não conhece
 # EventManager nem ramifica por ID). rare_bonus/boss_bonus/special_essence_bonus
@@ -68,9 +70,11 @@ func _effective_max_goobers() -> int:
 	return MAX_GOOBERS + game_state.get_perk_level("goober_luck") + int(event_snapshot["spawn_bonus"])
 
 
-func setup(button: Control, state_ref: GameState) -> void:
+func setup(button: Control, state_ref: GameState, container: Node = null, bounds: Control = null) -> void:
 	click_button = button
 	game_state = state_ref
+	goober_container = container if container != null else self
+	bounds_control = bounds
 	catalog = GooberCatalog.new()
 	build_shared_frames()
 	if DEV_TEST_SPAWN:
@@ -111,6 +115,8 @@ func _process(delta: float) -> void:
 
 
 func get_bounds() -> Rect2:
+	if bounds_control != null and is_instance_valid(bounds_control):
+		return Rect2(Vector2.ZERO, bounds_control.size)
 	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
 	var top := Layout.TOP_BAR_HEIGHT + Layout.EDGE_MARGIN
 	var bottom := Layout.BOTTOM_BAR_HEIGHT + Layout.EDGE_MARGIN
@@ -175,7 +181,7 @@ func spawn_goober_of_type(type_id: String) -> bool:
 		bounds.position.y + margin + randf() * maxf(1.0, bounds.size.y - goober_size)
 	)
 
-	add_child(goober)
+	goober_container.add_child(goober)
 	goobers.append(goober)
 	game_state.register_goober_seen(type_id)
 	return true

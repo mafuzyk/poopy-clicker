@@ -36,6 +36,7 @@ const POINTER_FRESHNESS_MS := 800
 
 var click_button: Button
 var game_state: GameState
+var play_area: Control = null
 
 # Multipliers/capabilities de evento fornecidos pelo main (controller não conhece EventManager).
 var event_move_multiplier := 1.0
@@ -60,11 +61,14 @@ var pointer_fresh_until_ms := 0
 var blink_roll_override := -1.0
 
 
-func setup(button: Button, state: GameState) -> void:
+func setup(button: Button, state: GameState, explicit_play_area: Control = null) -> void:
 	click_button = button
 	game_state = state
+	play_area = explicit_play_area
 	click_button.pressed.connect(_on_pressed)
-	click_button.get_viewport().size_changed.connect(keep_button_inside)
+	var vp := click_button.get_viewport()
+	if vp != null:
+		vp.size_changed.connect(keep_button_inside)
 	game_state.changed.connect(update_button_scale)
 	update_button_scale()
 	center_button()
@@ -201,6 +205,8 @@ func get_difficulty_step() -> int:
 
 
 func get_play_area_rect() -> Rect2:
+	if play_area != null and is_instance_valid(play_area):
+		return Rect2(Vector2.ZERO, play_area.size)
 	var viewport_size := click_button.get_viewport_rect().size
 	var top_inset := Layout.TOP_BAR_HEIGHT
 	var bottom_inset := Layout.BOTTOM_BAR_HEIGHT
