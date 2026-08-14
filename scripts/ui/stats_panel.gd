@@ -41,7 +41,7 @@ func refresh() -> void:
 		+ "Prestígio atual: P%d\n"
 		+ "Prestígios feitos: %d\n"
 		+ "Poopy Essence: %d\n"
-		+ "Goober Coins: %d\n"
+		+ "Goober Coins: %s\n"
 		+ "Maior combo: %d\n"
 		+ "Eventos vistos: %d\n"
 		+ "Ganho offline: $%s\n"
