@@ -631,6 +631,14 @@ func _test_goober_snapshot_plumbing() -> void:
 	manager.apply_goober_snapshot({"spawn_bonus": 0})
 	check(manager._effective_max_goobers() == 10, "spawn cap volta a 10")
 
+	# Snapshot vazio (end de evento) reseta TODAS as chaves para defaults.
+	manager.apply_goober_snapshot({})
+	var reset := manager.get_goober_snapshot()
+	check(int(reset["spawn_bonus"]) == 0, "reset: spawn_bonus 0")
+	check(is_equal_approx(float(reset["special_money_mult"]), 1.0), "reset: special_money_mult 1.0")
+	check(int(reset["panic_reduce"]) == 0, "reset: panic_reduce 0")
+	check(is_equal_approx(float(reset["rare_bonus"]), 0.0), "reset: rare_bonus 0.0")
+
 
 func _test_panic_reduce_push() -> void:
 	var catalog := GooberCatalog.new()

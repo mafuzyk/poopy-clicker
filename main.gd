@@ -108,35 +108,48 @@ func create_event_manager() -> void:
 	event_manager = EventManager.new()
 	event_manager.name = "EventManager"
 	event_manager.setup(game_state)
-	event_manager.event_started.connect(_apply_event_modifiers)
-	event_manager.event_ended.connect(_apply_event_modifiers)
+	event_manager.event_started.connect(_on_event_started)
+	event_manager.event_ended.connect(_on_event_ended)
 	add_child(event_manager)
 
 
-func _apply_event_modifiers(id: String = "", definition: Dictionary = {}) -> void:
+# start: aplica definition + derived capabilities do evento INICIADO.
+func _on_event_started(id: String, definition: Dictionary) -> void:
 	if click_controller == null:
 		return
-
-	# Capabilities de movimento/visual: dados canônicos + derivados (adaptador
-	# de dados em EventCatalog; main não ramifica por ID de evento).
 	var caps: Dictionary = definition.duplicate()
 	for key in EventCatalog.derived_capabilities(id).keys():
 		caps[key] = EventCatalog.derived_capabilities(id)[key]
 	click_controller.apply_effect_capabilities(caps)
-
-	if goober_manager != null:
-		goober_manager.apply_goober_snapshot({
-			"spawn_bonus": event_manager.get_float_modifier("spawn_bonus", 0.0),
-			"rare_bonus": event_manager.get_float_modifier("rare_bonus", 0.0),
-			"boss_bonus": event_manager.get_float_modifier("boss_bonus", 0.0),
-			"panic_reduce": event_manager.get_float_modifier("panic_reduce", 0.0),
-			"special_money_mult": event_manager.get_float_modifier("special_money_mult", 1.0),
-			"special_coin_bonus": event_manager.get_float_modifier("special_coin_bonus", 0.0),
-			"special_essence_bonus": event_manager.get_float_modifier("special_essence_bonus", 0.0),
-		})
-
+	_apply_goober_snapshot_from_event()
 	if invert_overlay != null:
 		invert_overlay.visible = event_manager.get_bool_modifier("invert_colors", false)
+
+
+# end: aplica capabilities/snapshot VAZIOS (defaults) — nunca reaplica
+# derived do evento que terminou (id do event_ended é o antigo).
+func _on_event_ended(_id: String) -> void:
+	if click_controller == null:
+		return
+	click_controller.apply_effect_capabilities({})
+	if goober_manager != null:
+		goober_manager.apply_goober_snapshot({})
+	if invert_overlay != null:
+		invert_overlay.visible = false
+
+
+func _apply_goober_snapshot_from_event() -> void:
+	if goober_manager == null:
+		return
+	goober_manager.apply_goober_snapshot({
+		"spawn_bonus": event_manager.get_float_modifier("spawn_bonus", 0.0),
+		"rare_bonus": event_manager.get_float_modifier("rare_bonus", 0.0),
+		"boss_bonus": event_manager.get_float_modifier("boss_bonus", 0.0),
+		"panic_reduce": event_manager.get_float_modifier("panic_reduce", 0.0),
+		"special_money_mult": event_manager.get_float_modifier("special_money_mult", 1.0),
+		"special_coin_bonus": event_manager.get_float_modifier("special_coin_bonus", 0.0),
+		"special_essence_bonus": event_manager.get_float_modifier("special_essence_bonus", 0.0),
+	})
 
 
 func _input(event: InputEvent) -> void:

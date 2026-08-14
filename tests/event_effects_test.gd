@@ -56,7 +56,13 @@ func _test_movement_capabilities() -> void:
 	for i in range(10):
 		controller.move_click_button_randomly()
 		check(button.position.x >= area.position.x - 0.01, "rebound: nunca atravessa a borda (x)")
-	check(button.position.x > area.position.x + 2.0, "rebound: botao se afastou da borda")
+
+	# Determinístico: na zona de 8 px da borda, o drift e sempre redirecionado
+	# para dentro (randint >= 9 para step 28), entao uma jogada afasta da borda.
+	button.position.x = area.position.x + 2.0
+	var x_before: float = button.position.x
+	controller.move_click_button_randomly()
+	check(button.position.x > x_before, "rebound: drift redirecionado para dentro a partir da borda")
 
 	# center_pull: lerp de 8% do deslocamento restante por tick.
 	controller.apply_effect_capabilities({"center_pull": true})
@@ -159,6 +165,21 @@ func _test_main_integration() -> void:
 	main.get("event_manager").end_event()
 	check(is_equal_approx(controller_ref.event_move_multiplier, 1.0), "main: fim do evento move_mult 1.0")
 	check(not controller_ref.center_pull_active, "main: fim do evento limpa capabilities")
+
+	# Regressões de cleanup do derived capability (sticky jitter).
+	main.get("event_manager").force_start_event("sticky")
+	check(controller_ref.sticky_active, "main: sticky ativa sticky_jitter")
+	check(is_equal_approx(controller_ref.event_move_multiplier, 0.35), "main: sticky move_mult 0.35")
+	main.get("event_manager").end_event()
+	check(not controller_ref.sticky_active, "regressao: end_event limpa sticky_jitter")
+	check(is_equal_approx(controller_ref.event_move_multiplier, 1.0), "regressao: end_event move_mult 1.0")
+
+	main.get("event_manager").force_start_event("sticky")
+	check(controller_ref.sticky_active, "main: sticky reativado")
+	main.get("event_manager").force_start_event("calm")
+	check(not controller_ref.sticky_active, "regressao: replace sticky->calm limpa sticky_jitter")
+	check(is_equal_approx(controller_ref.event_move_multiplier, 0.65), "main: replace sticky->calm move_mult 0.65")
+	main.get("event_manager").end_event()
 
 	var goober_manager: Node = main.get("goober_manager")
 	goober_manager.apply_goober_snapshot({"spawn_bonus": 1})

@@ -36,7 +36,7 @@ var passive_spawn_timer := PASSIVE_SPAWN_INTERVAL
 # EventManager nem ramifica por ID). rare_bonus/boss_bonus/special_essence_bonus
 # são plumbing exposto: chegam aqui e ficam consultáveis, mas o efeito de payout/
 # spawn correspondente é deferido até o subsistema real existir (ver source map).
-var event_snapshot: Dictionary = {
+const DEFAULT_EVENT_SNAPSHOT := {
 	"spawn_bonus": 0,
 	"rare_bonus": 0.0,
 	"boss_bonus": 0.0,
@@ -46,11 +46,13 @@ var event_snapshot: Dictionary = {
 	"special_essence_bonus": 0,
 }
 
+var event_snapshot: Dictionary = DEFAULT_EVENT_SNAPSHOT.duplicate(true)
 
+
+# Chaves ausentes voltam ao default (snapshot vazio = reset completo, usado no end).
 func apply_goober_snapshot(snapshot: Dictionary) -> void:
 	for key in event_snapshot.keys():
-		if snapshot.has(key):
-			event_snapshot[key] = snapshot[key]
+		event_snapshot[key] = snapshot.get(key, DEFAULT_EVENT_SNAPSHOT[key])
 	for goober in goobers:
 		goober.event_panic_reduce = float(event_snapshot["panic_reduce"])
 

@@ -117,7 +117,8 @@ static func pick_candidate_from_roll(candidates: Array, roll: float) -> String:
 
 
 # Raridades que possuem ao menos um candidato habilitado (na ordem canônica).
-# Com os 35 habilitados, retorna as 5 — algoritmo idêntico ao canônico.
+# Nota: o canônico NÃO define eventos mythic — mesmo com os 35 habilitados o
+# filtro retorna 4 raridades (mythic fica fora até existir algum evento mythic).
 static func get_available_rarities(candidates: Array) -> Array:
 	var available: Array = []
 	for rarity in RARITY_INFO.keys():
