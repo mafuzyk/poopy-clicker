@@ -5,6 +5,9 @@ const Economy = preload("res://scripts/systems/economy.gd")
 const Playfield = preload("res://scripts/ui/shell/playfield.gd")
 const ResourcePresenter = preload("res://scripts/ui/gameplay/resource_presenter.gd")
 const GameShellBase = preload("res://scripts/ui/shell/game_shell_base.gd")
+const ClickTarget = preload("res://scripts/ui/gameplay/click_target.gd")
+const ThemeController = preload("res://scripts/ui/design/theme_controller.gd")
+const UiTokens = preload("res://scripts/ui/design/ui_tokens.gd")
 
 var failures := 0
 var checks := 0
@@ -23,6 +26,7 @@ func _initialize() -> void:
 	_test_playfield_layers()
 	_test_shell_base_contract()
 	_test_resource_presenter()
+	_test_click_target()
 	if failures == 0:
 		print("MOBILE SHELL PASS: %d checks" % checks)
 	else:
@@ -66,3 +70,20 @@ func _test_resource_presenter() -> void:
 	check(snap["essence"] == "0", "essence value")
 	check(snap["prestige_visible"] == false, "prestige hidden")
 	check(snap["prestige"] == "P0", "prestige P0")
+
+
+func _test_click_target() -> void:
+	var state := GameState.new()
+	var theme := ThemeController.new()
+	root.add_child(theme)
+	theme.setup(state)
+
+	var target := ClickTarget.new()
+	root.add_child(target)
+	target.setup(theme, Vector2(200, 84))
+	target.scale = Vector2(0.9, 0.9)
+	var mechanical_scale := target.scale
+	target.debug_set_pressed_visual(true)
+	check(target.scale == mechanical_scale, "cosmetic press never changes mechanical scale")
+	check(target.get_visual_scale().x < 1.0, "press feedback affects visual child")
+	target.debug_set_pressed_visual(false)
