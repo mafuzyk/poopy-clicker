@@ -80,6 +80,7 @@ func _initialize() -> void:
 	_test_shop_full_inventory()
 	_test_active_skills()
 	_test_remaining_achievements()
+	_test_offline_and_settings()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -243,7 +244,7 @@ func _test_combo_achievements() -> void:
 		total += 1
 	for id2: String in combo_ids:
 		check(AchievementManager.DEFINITIONS.has(id2), "achievement %s definido" % id2)
-	check(total == 50, "total achievements = 50 (43 + 7 collector/hands/perk/shop), atual %d" % total)
+	check(total == 52, "total achievements = 52 (50 + offline_10h + sound_off), atual %d" % total)
 
 
 func _write_test_save(data: Dictionary, path: String) -> void:
@@ -1428,3 +1429,30 @@ func _test_remaining_achievements() -> void:
 	m2.setup(s2)
 	m2.evaluate()
 	check(m2.is_unlocked("shop_all"), "shop_all unlock")
+
+
+func _test_offline_and_settings() -> void:
+	var state := GameState.new()
+	check(state.get_offline_hours_cap() == 4, "offline cap 4h")
+	state.prestige_level = 3
+	check(state.get_offline_hours_cap() == 6, "P3 cap 6h")
+	state.prestige_level = 10
+	check(state.get_offline_hours_cap() == 10, "P10 cap 10h")
+
+	check(Main.compute_offline_gain(100, 3600.0, 14400.0) == 360000, "offline gain 100*3600 = 360000")
+	check(Main.compute_offline_gain(100, 999999.0, 14400.0) == 1440000, "offline gain capped em 4h")
+	check(Main.compute_offline_gain(0, 3600.0, 14400.0) == 0, "auto 0 -> sem offline")
+
+	var s2 := GameState.new()
+	s2.stats["offline_seconds"] = 36000
+	var m := AchievementManager.new()
+	m.setup(s2)
+	m.evaluate()
+	check(m.is_unlocked("offline_10h"), "offline_10h unlock")
+
+	var s3 := GameState.new()
+	s3.settings["sound_enabled"] = false
+	var m3 := AchievementManager.new()
+	m3.setup(s3)
+	m3.evaluate()
+	check(m3.is_unlocked("sound_off"), "sound_off unlock")

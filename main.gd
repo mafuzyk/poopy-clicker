@@ -72,6 +72,7 @@ func _ready() -> void:
 	setup_toast()
 	setup_goobers()
 	save_manager.load()
+	apply_offline_earnings()
 	mission_manager.ensure_missions()
 	if game_state.combo_count > 0:
 		combo_manager.restart_decay()
@@ -353,6 +354,34 @@ func on_buy_auto_upgrade() -> void:
 
 func on_buy_perk(key: String) -> void:
 	game_state.try_buy_perk(key)
+
+
+func apply_offline_earnings() -> void:
+	if not bool(game_state.settings.get("offline_progress", true)):
+		return
+	if game_state.last_saved_at <= 0.0:
+		return
+	var elapsed := Time.get_unix_time_from_system() - game_state.last_saved_at
+	if elapsed <= 0.0:
+		return
+	var cap := float(game_state.get_offline_hours_cap()) * 3600.0
+	var auto_val := economy.get_auto_value()
+	var gain := compute_offline_gain(auto_val, elapsed, cap)
+	if gain <= 0:
+		return
+	game_state.add_money(gain)
+	game_state.stats["offline_earned_total"] = int(game_state.stats.get("offline_earned_total", 0)) + gain
+	game_state.stats["offline_seconds"] = int(game_state.stats.get("offline_seconds", 0)) + int(minf(elapsed, cap))
+	game_state.changed.emit()
+
+
+static func compute_offline_gain(auto_value: int, elapsed: float, cap_seconds: float) -> int:
+	if auto_value <= 0:
+		return 0
+	var capped := minf(elapsed, cap_seconds)
+	if capped <= 0.0:
+		return 0
+	return int(float(auto_value) * capped)
 
 
 func _on_prestige_confirmed() -> void:

@@ -44,6 +44,7 @@ func _notification(what: int) -> void:
 
 
 func save() -> void:
+	game_state.last_saved_at = Time.get_unix_time_from_system()
 	var path := _save_path()
 	var file: FileAccess = FileAccess.open(path + ".tmp", FileAccess.WRITE)
 	if file == null:
@@ -81,6 +82,8 @@ func save() -> void:
 		"skill_shield_bought": game_state.skill_shield_bought,
 		"coinburst_bought": game_state.coinburst_bought,
 		"button_clicks_total": game_state.button_clicks_total,
+		"last_saved_at": game_state.last_saved_at,
+		"settings": game_state.settings,
 	}
 
 	for handler in save_handlers:
@@ -154,6 +157,9 @@ func load() -> bool:
 	game_state.skill_shield_bought = bool(data.get("skill_shield_bought", false))
 	game_state.coinburst_bought = bool(data.get("coinburst_bought", false))
 	game_state.button_clicks_total = int(data.get("button_clicks_total", 0))
+	game_state.last_saved_at = float(data.get("last_saved_at", 0.0))
+	var raw_settings: Variant = data.get("settings", {})
+	game_state.settings = raw_settings if typeof(raw_settings) == TYPE_DICTIONARY else {"offline_progress": true, "sound_enabled": true}
 
 	for handler in save_handlers:
 		handler["setter"].call(data.get(handler["key"], []))
@@ -211,6 +217,8 @@ func _normalize_stats(stats: Dictionary) -> Dictionary:
 	normalized["highest_combo"] = int(normalized.get("highest_combo", 0))
 	normalized["events_seen"] = int(normalized.get("events_seen", 0))
 	normalized["prestiges_done"] = int(normalized.get("prestiges_done", 0))
+	normalized["offline_earned_total"] = int(normalized.get("offline_earned_total", 0))
+	normalized["offline_seconds"] = int(normalized.get("offline_seconds", 0))
 	return normalized
 
 

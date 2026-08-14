@@ -106,6 +106,10 @@ var mission_state: Dictionary = {"slots": [], "completed_total": 0, "rerolls_use
 var frenzy_mult := 1.0
 var coinburst_mult := 1.0
 
+# Offline/settings (persistidos).
+var last_saved_at := 0.0
+var settings: Dictionary = {"offline_progress": true, "sound_enabled": true}
+
 
 func add_money(amount: int) -> void:
 	if amount == 0:
@@ -206,6 +210,15 @@ func has_maxed_perk() -> bool:
 		if get_perk_level(str(def["key"])) >= int(def["max_level"]):
 			return true
 	return false
+
+
+func get_offline_hours_cap() -> int:
+	var cap := 4
+	if prestige_level >= 3:
+		cap += 2
+	if prestige_level >= 10:
+		cap += 4
+	return cap
 
 
 func try_buy_perk(key: String) -> bool:

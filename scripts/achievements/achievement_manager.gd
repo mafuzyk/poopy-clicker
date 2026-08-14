@@ -55,6 +55,8 @@ const DEFINITIONS := {
 	"hands_on_25": {"name": "Mão de vaca", "hint": "Clique em 25 tipos."},
 	"perk_max": {"name": "Mestre das perks", "hint": "Tenha uma perk no nível máximo."},
 	"shop_all": {"name": "Colecionadora GC", "hint": "Compre todos os itens da loja."},
+	"offline_10h": {"name": "Dorminhoca", "hint": "Acumule 10 horas offline no total."},
+	"sound_off": {"name": "Silêncio", "hint": "Desligue o som nas configurações."},
 }
 
 var game_state: GameState
@@ -187,6 +189,10 @@ func get_progress(id: String) -> Vector2i:
 		return Vector2i(1 if game_state.has_maxed_perk() else 0, 1)
 	if id == "shop_all":
 		return Vector2i(game_state.get_secret_upgrades_bought_count(), 12)
+	if id == "offline_10h":
+		return Vector2i(int(game_state.stats.get("offline_seconds", 0)), 36000)
+	if id == "sound_off":
+		return Vector2i(0 if bool(game_state.settings.get("sound_enabled", true)) else 1, 1)
 	return Vector2i(-1, -1)
 
 
@@ -302,4 +308,8 @@ func _is_met(id: String) -> bool:
 		return game_state.has_maxed_perk()
 	if id == "shop_all":
 		return game_state.get_secret_upgrades_bought_count() >= 12
+	if id == "offline_10h":
+		return int(game_state.stats.get("offline_seconds", 0)) >= 36000
+	if id == "sound_off":
+		return not bool(game_state.settings.get("sound_enabled", true))
 	return false
