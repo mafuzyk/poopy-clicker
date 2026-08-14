@@ -25,6 +25,7 @@ const BLINK_JUMP := 55.0
 const FLEE_RANGE_BASE := 220.0
 const FLEE_RANGE_PER_DIFFICULTY := 1.5
 const FLEE_STRENGTH_BASE := 28.0
+const FLEE_PRESTIGE_FACTOR := 1.8
 const FLEE_WEALTH_DIVISOR := 300000.0
 const FLEE_WEALTH_CAP := 2.5
 const FLEE_UPGRADE_FACTOR := 0.6
@@ -163,6 +164,7 @@ func _apply_pointer_effects() -> void:
 
 	var flee_strength := int(
 		FLEE_STRENGTH_BASE
+		+ float(game_state.prestige_level) * FLEE_PRESTIGE_FACTOR
 		+ minf(float(game_state.lifetime_money) / FLEE_WEALTH_DIVISOR, FLEE_WEALTH_CAP)
 		+ float(game_state.click_level + game_state.auto_level) * FLEE_UPGRADE_FACTOR
 	)

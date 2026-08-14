@@ -20,8 +20,6 @@ var active_duration := 0.0
 
 # Shield futuro (Skill Shield): cancela evento ativo e bloqueia novos por 10s.
 var triggers_blocked := false
-# Hook futuro (prestige_level >= 3): multiplica pesos de rare/epic por 1.08.
-var rarity_weight_modifiers: Dictionary = {}
 # Apenas testes: duração fixa para eventos forçados (>= 0 ativa o override).
 var duration_override := -1.0
 
@@ -73,10 +71,17 @@ func try_random_event(trigger_roll: float = -1.0, rarity_roll: float = -1.0, can
 	if roll > EVENT_TRIGGER_CHANCE:
 		return false
 
-	var event_id := EventCatalog.choose_event(enabled_ids, rarity_weight_modifiers, rarity_roll, candidate_roll)
+	var event_id := EventCatalog.choose_event(enabled_ids, get_prestige_rarity_weight_modifiers(), rarity_roll, candidate_roll)
 	if event_id == "":
 		return false
 	return start_event(event_id)
+
+
+# Canônico: prestige >= 3 multiplica rare/epic por 1.08 (derivado ao vivo do estado).
+func get_prestige_rarity_weight_modifiers() -> Dictionary:
+	if game_state != null and game_state.prestige_level >= 3:
+		return {"rare": 1.08, "epic": 1.08}
+	return {}
 
 
 # ---------- lifecycle ----------

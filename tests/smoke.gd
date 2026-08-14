@@ -61,6 +61,7 @@ func _initialize() -> void:
 	_test_prestige_transaction_success()
 	_test_prestige_transaction_failure()
 	_test_prestige_save_migration()
+	_test_prestige_event_weighting()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -908,3 +909,35 @@ func _test_prestige_save_migration() -> void:
 	check(from_v1.get_money_earned_total() == 300, "v1 -> v4: money_earned <- lifetime_money")
 	check(from_v1.prestige_level == 0 and from_v1.poopy_essence == 0, "v1 -> v4: prestige defaults")
 	check(int(from_v1.stats.get("prestiges_done", 0)) == 0, "v1 -> v4: prestiges_done 0")
+
+
+func _test_prestige_event_weighting() -> void:
+	# P2: sem modificadores. P3: rare/epic x1.08 apenas.
+	var state := GameState.new()
+	var manager := EventManager.new()
+	manager.setup(state)
+	root.add_child(manager)
+
+	state.prestige_level = 2
+	check(manager.get_prestige_rarity_weight_modifiers() == {}, "P2: sem modificadores de raridade")
+	state.prestige_level = 3
+	var mods: Dictionary = manager.get_prestige_rarity_weight_modifiers()
+	check(is_equal_approx(float(mods.get("rare", 0.0)), 1.08), "P3: rare x1.08")
+	check(is_equal_approx(float(mods.get("epic", 0.0)), 1.08), "P3: epic x1.08")
+	check(not mods.has("common") and not mods.has("legendary") and not mods.has("mythic"), "P3: apenas rare/epic")
+
+	# Wiring: try_random_event usa os modificadores derivados ao vivo.
+	# Pool [calm(common), chaos(rare), invert_colors(epic)]; roll 0.57 cai em
+	# common sem prestige e em rare com prestige 3 (fronteira desloca).
+	var state2 := GameState.new()
+	var manager2 := EventManager.new()
+	manager2.setup(state2, ["calm", "chaos", "invert_colors"])
+	root.add_child(manager2)
+	state2.prestige_level = 0
+	manager2.try_random_event(0.0, 0.57, 0.0)
+	check(manager2.get_active_event_id() == "calm", "P0: roll 0.57 -> common (calm)")
+	manager2.end_event()
+	state2.prestige_level = 3
+	manager2.try_random_event(0.0, 0.57, 0.0)
+	check(manager2.get_active_event_id() == "chaos", "P3: roll 0.57 -> rare (chaos)")
+	manager2.end_event()

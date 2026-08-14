@@ -121,6 +121,23 @@ func _test_movement_capabilities() -> void:
 	controller._effect_tick()
 	check(button.position == before, "flee: ponteiro expirado nao reage")
 
+	# Prestige: P3, lifetime 300000, click+auto 10 -> 28 + 5.4 + 1 + 6 = 40.4 -> 40.
+	state.prestige_level = 3
+	state.lifetime_money = 300000
+	state.click_level = 5
+	state.auto_level = 5
+	controller.apply_effect_capabilities({"mouse_flee": true})
+	btn_center = button.position + effective / 2.0
+	controller.set_pointer_position(btn_center + Vector2(50.0, 0.0))
+	before = button.position
+	controller._effect_tick()
+	check(is_equal_approx(button.position.x, before.x - 40.0), "flee: P3 strength 40")
+	state.prestige_level = 0
+	state.lifetime_money = 0
+	state.click_level = 0
+	state.auto_level = 0
+	controller.apply_effect_capabilities({})
+
 	# sticky: jitter ±5x/±3y por clique.
 	controller.apply_effect_capabilities({"sticky_jitter": true})
 	var all_in_bounds := true
