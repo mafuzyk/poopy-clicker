@@ -75,6 +75,7 @@ func _initialize() -> void:
 	_test_missions()
 	_test_missions_completion()
 	_test_spawn_model_and_boss()
+	_test_event_on_click_dispatch()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -721,7 +722,7 @@ func _test_panic_speed_canonical() -> void:
 			"panic %s: speed = speed_max + 3" % id)
 		check(panic_speed > walk_max, "panic %s: mais rapido que o andar maximo" % id)
 		checked += 1
-	check(checked == 20, "20 tipos habilitados verificados (sem bloqueados)")
+	check(checked == 38, "38 tipos habilitados verificados (todos)")
 
 
 func _test_special_reward_gating() -> void:
@@ -963,8 +964,9 @@ func _test_essence_goobers_enabled() -> void:
 	check(catalog.is_enabled("prism"), "prism habilitado")
 	check(catalog.is_enabled("crown"), "crown habilitado")
 	check(catalog.is_enabled("boss"), "boss habilitado (gate proprio)")
-	check(not catalog.is_enabled("angel"), "angel continua bloqueado")
-	check(catalog.get_enabled_ids().size() == 20, "20 tipos habilitados (16 + 3 essence + boss)")
+	check(catalog.is_enabled("angel"), "angel habilitado (event_on_click)")
+	check(catalog.is_enabled("fairy"), "fairy habilitado")
+	check(catalog.get_enabled_ids().size() == 38, "38 tipos habilitados (todos)")
 
 
 func _test_essence_payout() -> void:
@@ -1313,3 +1315,19 @@ func _test_spawn_model_and_boss() -> void:
 	var boss_goober := Goober.new()
 	boss_goober.setup(null, 86.0, "boss", GooberCatalog.new().get_type("boss"), bs)
 	check(boss_goober.hp == 30, "boss max_hits = 18 + 2*3 + 3*2 = 30")
+
+
+func _test_event_on_click_dispatch() -> void:
+	var state := GameState.new()
+	var manager := GooberManager.new()
+	manager.game_state = state
+	manager.catalog = GooberCatalog.new()
+	var triggered: Array = []
+	manager.event_trigger_requested.connect(func(id: String) -> void: triggered.append(id))
+	manager._on_goober_defeated(_make_fake_goober("storm", manager))
+	check(triggered == ["storm_mode"], "storm derrotado -> evento storm_mode")
+	triggered.clear()
+	manager._on_goober_defeated(_make_fake_goober("gold", manager))
+	check(triggered.is_empty(), "gold sem event_on_click -> sem evento")
+	manager._on_goober_defeated(_make_fake_goober("chef", manager))
+	check(triggered == ["snack_break"], "chef derrotado -> evento snack_break")

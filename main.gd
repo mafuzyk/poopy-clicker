@@ -188,6 +188,7 @@ func _input(event: InputEvent) -> void:
 
 func setup_goobers() -> void:
 	goober_manager.setup(click_button, game_state)
+	goober_manager.event_trigger_requested.connect(event_manager.force_start_event)
 
 
 func build_ui() -> void:

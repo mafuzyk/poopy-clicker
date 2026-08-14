@@ -24,28 +24,9 @@ const RARITY_LUCK_FACTORS := {
 	"mythic": 2.2,
 }
 
-# Tipos com comportamento dependente de sistema ainda inexistente.
-# Eventos/Boss/Prestige não devem aparecer naturalmente até a dependência existir.
-const SPAWN_BLOCKED_REASON := {
-	"frozen": "events",
-	"bomb": "events",
-	"storm": "events",
-	"glitch": "events",
-	"toxic": "events",
-	"magnet": "events",
-	"sleepy": "events",
-	"plasma": "events",
-	"ghost": "events",
-	"lava": "events",
-	"clockwork": "events",
-	"pirate": "events",
-	"angel": "events",
-	"devil": "events",
-	"voidling": "events",
-	"chef": "events",
-	"arcade": "events",
-	"fairy": "events",
-}
+# Todos os 38 tipos habilitados: eventos/boss/essence agora têm subsistemas.
+# (Mantido vazio; goobers com event_on_click disparam o evento ao serem derrotados.)
+const SPAWN_BLOCKED_REASON := {}
 
 # TEMP: cores provisórias por tipo até o arquivo canônico definir as identidades visuais.
 const TYPES := {

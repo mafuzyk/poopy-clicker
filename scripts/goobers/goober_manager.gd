@@ -6,6 +6,7 @@ const GooberCatalog = preload("res://scripts/goobers/goober_catalog.gd")
 const Layout = preload("res://scripts/ui/layout.gd")
 
 signal goober_clicked
+signal event_trigger_requested(event_id: String)
 
 const MAX_GOOBERS := 10
 const PASSIVE_SPAWN_INTERVAL := 12.0
@@ -309,5 +310,10 @@ func _on_goober_defeated(goober: Goober) -> void:
 			essence_gain += maxi(0, int(event_snapshot["special_essence_bonus"]))
 	if essence_gain > 0:
 		game_state.add_poopy_essence(essence_gain)
+
+	# Goobers com event_on_click disparam o evento correspondente (canônico).
+	var event_on_click := str(data.get("event_on_click", ""))
+	if event_on_click != "":
+		event_trigger_requested.emit(event_on_click)
 
 	goober_clicked.emit()
