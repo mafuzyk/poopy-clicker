@@ -101,24 +101,41 @@ static func pick_candidate_from_roll(candidates: Array, roll: float) -> String:
 	return str(candidates[index])
 
 
+# Raridades que possuem ao menos um candidato habilitado (na ordem canônica).
+# Com os 35 habilitados, retorna as 5 — algoritmo idêntico ao canônico.
+static func get_available_rarities(candidates: Array) -> Array:
+	var available: Array = []
+	for rarity in RARITY_INFO.keys():
+		for id in candidates:
+			if str(EVENT_INFO.get(id, {}).get("rarity", "")) == rarity:
+				available.append(rarity)
+				break
+	return available
+
+
 # candidates: Array de IDs habilitados. rarity_weight_modifiers: hook futuro
 # (prestige_level >= 3 -> {"rare": 1.08, "epic": 1.08}).
+# Pool parcial: pesa apenas raridades presentes entre os candidatos —
+# um roll nunca cai numa raridade sem candidatos e morre em silêncio.
 static func choose_event(
 	candidates: Array,
 	rarity_weight_modifiers: Dictionary = {},
 	rarity_roll: float = -1.0,
 	candidate_roll: float = -1.0
 ) -> String:
-	var rarities: Array = RARITY_INFO.keys()
+	var available_rarities: Array = get_available_rarities(candidates)
+	if available_rarities.is_empty():
+		return ""
+
 	var weights: Array = []
-	for rarity in rarities:
+	for rarity in available_rarities:
 		var weight: float = get_rarity_weight(rarity)
 		if rarity_weight_modifiers.has(rarity):
 			weight *= float(rarity_weight_modifiers[rarity])
 		weights.append(weight)
 
 	var roll_r: float = randf() if rarity_roll < 0.0 else rarity_roll
-	var chosen_rarity := pick_rarity_from_roll(rarities, weights, roll_r)
+	var chosen_rarity := pick_rarity_from_roll(available_rarities, weights, roll_r)
 
 	var filtered: Array = []
 	for id in candidates:

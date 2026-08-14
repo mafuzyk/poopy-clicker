@@ -352,20 +352,41 @@ func _test_rarity_selection_two_phase() -> void:
 	check(EventCatalog.pick_rarity_from_roll(rarities, weights, common_boundary + 0.001) == "rare", "depois da fronteira -> rare")
 
 	var candidates: Array = EventCatalog.CORE_ENABLED_IDS.duplicate()
-	var chosen: String = EventCatalog.choose_event(candidates, {}, common_boundary + 0.001, 0.0)
-	check(chosen != "", "choose_event retorna candidato")
-	check(str(EventCatalog.EVENT_INFO[chosen]["rarity"]) == "rare", "candidato pertence a rarity sorteada (fase 2)")
+	var available: Array = EventCatalog.get_available_rarities(candidates)
+	check(available == ["common", "rare"], "pool core: raridades disponiveis = [common, rare]")
+
+	# Pool parcial pesa apenas common (5.0) e rare (2.5): total 7.5.
+	var pool_boundary: float = 5.0 / 7.5
+	var chosen: String = EventCatalog.choose_event(candidates, {}, pool_boundary - 0.001, 0.0)
+	check(EventCatalog.CORE_ENABLED_IDS.has(chosen), "roll abaixo da fronteira -> common (%s)" % chosen)
+	check(str(EventCatalog.EVENT_INFO[chosen]["rarity"]) == "common", "candidato pertence a rarity sorteada (common)")
+	chosen = EventCatalog.choose_event(candidates, {}, pool_boundary + 0.001, 0.0)
+	check(chosen != "", "roll acima da fronteira -> rare (nao morre)")
+	check(str(EventCatalog.EVENT_INFO[chosen]["rarity"]) == "rare", "candidato pertence a rarity sorteada (rare)")
+
+	# Bug corrigido: roll extremo nao pode cair numa raridade sem candidatos
+	# habilitados e retornar "" silenciosamente.
+	var extreme: String = EventCatalog.choose_event(candidates, {}, 0.999, 0.0)
+	check(extreme != "", "roll 0.999 com pool parcial nao retorna vazio")
+	check(str(EventCatalog.EVENT_INFO[extreme]["rarity"]) == "rare", "roll 0.999 cai em rare (ultima raridade do pool)")
+
 	var rare_ids: Array = []
 	for id in candidates:
 		if str(EventCatalog.EVENT_INFO[id]["rarity"]) == "rare":
 			rare_ids.append(id)
 	check(rare_ids.size() == 3, "pool core tem 3 eventos rare (2x click, 2x auto, chaos): %s" % str(rare_ids))
-	check(rare_ids.has(chosen), "candidato sorteado esta entre os rare do pool")
+	check(rare_ids.has(extreme), "candidato sorteado esta entre os rare do pool")
 
 	check(EventCatalog.pick_candidate_from_roll(["a", "b"], 0.0) == "a", "candidate roll 0 -> primeiro")
 	check(EventCatalog.pick_candidate_from_roll(["a", "b"], 0.999) == "b", "candidate roll .999 -> ultimo")
 	var with_mod := EventCatalog.choose_event(candidates, {"rare": 1.08, "epic": 1.08}, 0.0, 0.0)
 	check(EventCatalog.CORE_ENABLED_IDS.has(with_mod), "modifiers de rarity nao quebram selecao (%s)" % with_mod)
+	# Pool completo (35): o canônico não tem nenhum evento mythic — 4 raridades
+	# com candidatos; mythic fica de fora exatamente como o pool parcial.
+	var all_ids: Array = EventCatalog.EVENT_INFO.keys()
+	var full_available: Array = EventCatalog.get_available_rarities(all_ids)
+	check(full_available == ["common", "rare", "epic", "legendary"], "35 habilitados: 4 raridades (mythic sem eventos no canonico)")
+	check(EventCatalog.choose_event(all_ids, {}, 0.999, 0.0) != "", "pool completo: roll extremo nao morre (legendary)")
 
 
 func _test_random_trigger_roll() -> void:
@@ -426,9 +447,14 @@ func _test_event_modifiers() -> void:
 	check(manager.start_event("double_click"), "start_event valido")
 	check(not manager.start_event("calm"), "start_event sem replace nao substitui ativo")
 	check(manager.get_active_event_id() == "double_click", "ativo segue double_click")
+
+	var replaced_ids: Array = []
+	manager.event_ended.connect(func(id: String) -> void: replaced_ids.append(id))
 	check(manager.start_event("calm", true), "replace ativo substitui evento")
+	check(replaced_ids == ["double_click"], "replace emite event_ended do antigo (double_click)")
 	check(manager.get_active_event_id() == "calm", "ativo agora e calm")
 	manager.end_event()
+	check(replaced_ids == ["double_click", "calm"], "end_event emite event_ended do ativo")
 	check(not manager.has_active_event(), "end_event limpa estado")
 
 

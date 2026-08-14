@@ -59,9 +59,16 @@ func get_play_area_rect() -> Rect2:
 	return Rect2(Layout.EDGE_MARGIN, top_inset, width, height)
 
 
+# Tamanho visual real: `size` é pré-transform; `scale` (progressão × evento)
+# muda o retângulo efetivo — o clamp precisa enxergar isso.
+func _get_effective_size() -> Vector2:
+	return click_button.size * click_button.scale
+
+
 func move_click_button_randomly() -> void:
 	var step: int = maxi(1, int(round(float(get_difficulty_step()) * event_move_multiplier)))
 	var area: Rect2 = get_play_area_rect()
+	var effective_size := _get_effective_size()
 
 	var drift_x: float = float(randi_range(-step, step))
 	var drift_y: float = float(randi_range(-step / 2, step / 2))
@@ -70,26 +77,28 @@ func move_click_button_randomly() -> void:
 		drift_x += float((randi() % 2) * 2 - 1) * float(step / 2)
 
 	click_button.position = Vector2(
-		clampf(click_button.position.x + drift_x, area.position.x, maxf(area.position.x, area.end.x - click_button.size.x)),
-		clampf(click_button.position.y + drift_y, area.position.y, maxf(area.position.y, area.end.y - click_button.size.y))
+		clampf(click_button.position.x + drift_x, area.position.x, maxf(area.position.x, area.end.x - effective_size.x)),
+		clampf(click_button.position.y + drift_y, area.position.y, maxf(area.position.y, area.end.y - effective_size.y))
 	)
 
 
 func keep_button_inside() -> void:
 	var area: Rect2 = get_play_area_rect()
+	var effective_size := _get_effective_size()
 
 	click_button.position = Vector2(
-		clampf(click_button.position.x, area.position.x, maxf(area.position.x, area.end.x - click_button.size.x)),
-		clampf(click_button.position.y, area.position.y, maxf(area.position.y, area.end.y - click_button.size.y))
+		clampf(click_button.position.x, area.position.x, maxf(area.position.x, area.end.x - effective_size.x)),
+		clampf(click_button.position.y, area.position.y, maxf(area.position.y, area.end.y - effective_size.y))
 	)
 
 
 func center_button() -> void:
 	var area: Rect2 = get_play_area_rect()
+	var effective_size := _get_effective_size()
 
 	click_button.position = Vector2(
-		(area.size.x - click_button.size.x) / 2.0 + area.position.x,
-		(area.size.y - click_button.size.y) / 2.0 + area.position.y
+		(area.size.x - effective_size.x) / 2.0 + area.position.x,
+		(area.size.y - effective_size.y) / 2.0 + area.position.y
 	)
 
 

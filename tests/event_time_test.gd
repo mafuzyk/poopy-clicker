@@ -5,6 +5,8 @@ const EventManager = preload("res://scripts/systems/event_manager.gd")
 const ComboManager = preload("res://scripts/systems/combo_manager.gd")
 const EventBanner = preload("res://scripts/ui/event_banner.gd")
 const EventCatalog = preload("res://scripts/data/event_catalog.gd")
+const ClickController = preload("res://scripts/systems/click_controller.gd")
+const Layout = preload("res://scripts/ui/layout.gd")
 
 var failures := 0
 var checks := 0
@@ -127,6 +129,36 @@ func _test_grace_no_retroactive_shorten() -> void:
 	await get_tree().create_timer(0.9).timeout
 	check(state.combo_count == 0, "combo quebra no prazo original de 2.7s")
 
+	_test_scaled_clamp()
+
+
+func _test_scaled_clamp() -> void:
+	var button := Button.new()
+	button.size = Layout.CLICK_BUTTON_SIZE
+	add_child(button)
+
+	var controller := ClickController.new()
+	controller.setup(button, state)
+	controller.set_event_scale_multiplier(1.22)
+
+	var area: Rect2 = controller.get_play_area_rect()
+	button.position = Vector2(area.end.x + 100.0, area.end.y + 100.0)
+	controller.keep_button_inside()
+
+	var effective: Vector2 = button.size * button.scale
+	check(button.position.x + effective.x <= area.end.x + 0.01, "clamp usa tamanho escalado (borda direita)")
+	check(button.position.y + effective.y <= area.end.y + 0.01, "clamp usa tamanho escalado (borda inferior)")
+	check(button.position.x >= area.position.x - 0.01, "clamp respeita borda esquerda")
+	check(button.position.y >= area.position.y - 0.01, "clamp respeita borda superior")
+
+	controller.set_event_scale_multiplier(1.0)
+	button.position = Vector2(area.end.x + 100.0, area.end.y + 100.0)
+	controller.keep_button_inside()
+	var unscaled: Vector2 = button.size * button.scale
+	check(button.position.x + unscaled.x <= area.end.x + 0.01, "sem evento: clamp com tamanho normal (x)")
+	check(button.position.y + unscaled.y <= area.end.y + 0.01, "sem evento: clamp com tamanho normal (y)")
+
+	button.queue_free()
 	_finish()
 
 

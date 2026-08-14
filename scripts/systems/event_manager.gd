@@ -85,10 +85,14 @@ func start_event(event_id: String, replace_active: bool = false) -> bool:
 	var definition: Dictionary = EventCatalog.get_event(event_id)
 	if definition.is_empty():
 		return false
-	if has_active_event() and not replace_active:
-		return false
 	if has_active_event():
+		if not replace_active:
+			return false
+		# Substituição encerra o antigo explicitamente: listeners que limpam
+		# side effects (invert_colors, orbital, gravity...) recebem event_ended.
+		var old_id := active_event_id
 		_clear_runtime()
+		event_ended.emit(old_id)
 
 	active_event_id = event_id
 	active_definition = definition
