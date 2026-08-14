@@ -29,6 +29,9 @@ const SkillManager = preload("res://scripts/systems/skill_manager.gd")
 const ThemesPanel = preload("res://scripts/ui/themes_panel.gd")
 const StatsPanel = preload("res://scripts/ui/stats_panel.gd")
 const SoundManager = preload("res://scripts/systems/sound_manager.gd")
+const ThemeController = preload("res://scripts/ui/design/theme_controller.gd")
+const LayoutClassifier = preload("res://scripts/ui/design/layout_classifier.gd")
+const MobileGameShell = preload("res://scripts/ui/shell/mobile/mobile_game_shell.gd")
 
 
 var game_state: GameState
@@ -60,6 +63,9 @@ var skill_manager: SkillManager
 var themes_panel: ThemesPanel
 var stats_panel: StatsPanel
 var sound_manager: SoundManager
+var theme_controller: ThemeController
+var game_shell
+var layout_profile: Dictionary = {}
 
 
 func _ready() -> void:
@@ -218,13 +224,43 @@ func _input(event: InputEvent) -> void:
 
 
 func setup_goobers() -> void:
-	goober_manager.setup(click_button, game_state)
+	var container: Node = null
+	var bounds: Control = null
+	if game_shell != null:
+		container = game_shell.playfield.goober_layer
+		bounds = game_shell.playfield.goober_layer
+	goober_manager.setup(click_button, game_state, container, bounds)
 	goober_manager.event_trigger_requested.connect(event_manager.force_start_event)
 	skill_manager.goober_manager = goober_manager
 	skill_manager.event_manager = event_manager
 
 
 func build_ui() -> void:
+	theme_controller = ThemeController.new()
+	theme_controller.name = "ThemeController"
+	theme_controller.setup(game_state)
+	add_child(theme_controller)
+
+	layout_profile = LayoutClassifier.runtime_profile(get_viewport_rect().size)
+	if layout_profile.family == LayoutClassifier.LayoutFamily.MOBILE:
+		_build_mobile_ui()
+	else:
+		_build_legacy_ui()
+
+
+func _build_mobile_ui() -> void:
+	game_shell = MobileGameShell.new()
+	game_shell.name = "MobileGameShell"
+	game_shell.setup(game_state, economy, combo_manager, event_manager, theme_controller, layout_profile)
+	game_shell.shop_requested.connect(panel_manager_open_shop)
+	game_shell.bestiary_requested.connect(panel_manager_open_bestiary)
+	game_shell.menu_requested.connect(panel_manager_open_menu)
+	add_child(game_shell)
+	click_button = game_shell.click_target
+	create_invert_overlay(game_shell.overlay_layer)
+
+
+func _build_legacy_ui() -> void:
 	hud = Hud.new()
 	hud.setup(game_state, economy)
 	hud.menu_requested.connect(panel_manager_open_menu)
@@ -244,13 +280,14 @@ func build_ui() -> void:
 	event_banner.setup(event_manager)
 	add_child(event_banner)
 
-	create_invert_overlay()
+	create_invert_overlay(self)
 
 
-func create_invert_overlay() -> void:
+func create_invert_overlay(parent: Node = null) -> void:
 	# Overlay temporário full-screen, transparente a input, que inverte a cena
 	# renderizada enquanto o capability invert_colors está ativo (sem tocar na
 	# UI provisória; será substituído no redesign final).
+	var target: Node = parent if parent != null else self
 	invert_overlay = ColorRect.new()
 	invert_overlay.name = "InvertOverlay"
 	invert_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -268,7 +305,7 @@ func create_invert_overlay() -> void:
 	var material := ShaderMaterial.new()
 	material.shader = shader
 	invert_overlay.material = material
-	add_child(invert_overlay)
+	target.add_child(invert_overlay)
 
 
 func setup_panels() -> void:
@@ -355,8 +392,11 @@ func _on_surface_closed(_id: String) -> void:
 
 
 func _set_gameplay_blocked(blocked: bool) -> void:
-	click_button.disabled = blocked
-	click_button.modulate = Color(0.55, 0.55, 0.6, 0.35) if blocked else Color.WHITE
+	if game_shell != null:
+		game_shell.set_gameplay_blocked(blocked)
+	else:
+		click_button.disabled = blocked
+		click_button.modulate = Color(0.55, 0.55, 0.6, 0.35) if blocked else Color.WHITE
 	goober_manager.set_gameplay_input_blocked(blocked)
 
 
@@ -454,7 +494,10 @@ func _spawn_post_prestige_goobers() -> void:
 func setup_click_controller() -> void:
 	click_controller = ClickController.new()
 	click_controller.name = "ClickController"
-	click_controller.setup(click_button, game_state)
+	var play_area: Control = null
+	if game_shell != null:
+		play_area = game_shell.playfield.click_target_layer
+	click_controller.setup(click_button, game_state, play_area)
 	click_controller.clicked.connect(on_click)
 	add_child(click_controller)
 
@@ -520,7 +563,8 @@ func on_achievement_unlocked(id: String) -> void:
 
 
 func refresh_ui() -> void:
-	hud.refresh()
+	if hud != null:
+		hud.refresh()
 	if menu_panel != null and menu_panel.visible:
 		menu_panel.refresh()
 	if achievements_panel != null and achievements_panel.visible:
