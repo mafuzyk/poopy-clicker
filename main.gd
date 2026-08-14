@@ -21,6 +21,7 @@ const MenuPanel = preload("res://scripts/ui/menu_panel.gd")
 const AchievementsPanel = preload("res://scripts/ui/achievements_panel.gd")
 const BestiaryPanel = preload("res://scripts/ui/bestiary_panel.gd")
 const ShellPanel = preload("res://scripts/ui/shell_panel.gd")
+const PrestigePanel = preload("res://scripts/ui/prestige_panel.gd")
 
 
 var game_state: GameState
@@ -44,6 +45,7 @@ var panel_manager: PanelManager
 var menu_panel: MenuPanel
 var achievements_panel: AchievementsPanel
 var bestiary_panel: BestiaryPanel
+var prestige_panel: PrestigePanel
 
 
 func _ready() -> void:
@@ -251,7 +253,10 @@ func setup_panels() -> void:
 	panel_manager.register_surface("menu", menu_panel)
 
 	_register_shell("missions", "MISSÕES", "Objetivos gerados com progresso de clique, dinheiro e goobers.", "chega com o sistema de missões (spec §18).")
-	_register_shell("prestige", "PRESTIGE", "Recomeçar a partida acumulando Poopy Essence para bônus permanentes.", "chega com Prestige + Essence (spec §19).")
+	prestige_panel = PrestigePanel.new()
+	prestige_panel.setup(game_state)
+	prestige_panel.prestige_confirmed.connect(_on_prestige_confirmed)
+	panel_manager.register_surface("prestige", prestige_panel)
 	_register_shell("perks", "PERKS", "Melhorias passivas compradas com Poopy Essence.", "chega com o sistema de perks (spec §20).")
 	_register_shell("stats", "ESTATÍSTICAS", "Histórico completo da partida: cliques, goobers, ganhos totais.", "chega com o sistema de stats (spec §25).")
 	_register_shell("themes", "TEMAS", "Aparência do jogo: fundo, cores e estilo.", "chega com os temas (spec §21).")
@@ -309,6 +314,37 @@ func on_buy_click_upgrade() -> void:
 
 func on_buy_auto_upgrade() -> void:
 	game_state.try_buy_auto_upgrade(economy.get_auto_upgrade_cost())
+
+
+func _on_prestige_confirmed() -> void:
+	var result: Dictionary = game_state.try_prestige()
+	if not bool(result.get("success", false)):
+		if prestige_panel != null:
+			prestige_panel.reset_confirm()
+		return
+
+	combo_manager.reset_runtime_for_prestige()
+	goober_manager.reset_run()
+	prestige_panel.reset_confirm()
+	panel_manager.close_surface("prestige")
+	save_manager.save()
+	toast_ui.show_toast(
+		"Prestige realizado",
+		"+%d Poopy Essence • P%d → P%d" % [
+			int(result["essence_gain"]),
+			int(result["previous_level"]),
+			int(result["new_level"]),
+		]
+	)
+	_spawn_post_prestige_goobers()
+
+
+func _spawn_post_prestige_goobers() -> void:
+	await get_tree().create_timer(0.2).timeout
+	if not is_instance_valid(goober_manager):
+		return
+	goober_manager.try_spawn_goober()
+	goober_manager.try_spawn_goober()
 
 
 func setup_click_controller() -> void:
