@@ -96,7 +96,7 @@ func refresh() -> void:
 			status_label.modulate = Color(0.6, 1.0, 0.6)
 		else:
 			status_label.modulate = Color(1, 1, 1, 0.8)
-			var progress := get_progress(id)
+			var progress := achievement_manager.get_progress(id)
 			if progress.y > 0:
 				status_label.text = "%s / %s" % [
 					progress_formatter(progress.x),
@@ -117,19 +117,3 @@ func progress_formatter(value: int) -> String:
 	if value >= 1000:
 		return "%0.1fK" % (value / 1000.0)
 	return str(value)
-
-
-func get_progress(id: String) -> Vector2i:
-	if id == "first_click":
-		return Vector2i(game_state.button_clicks_total, 1)
-	if id == "hundred_clicks":
-		return Vector2i(game_state.button_clicks_total, 100)
-	if id == "money_10k":
-		return Vector2i(game_state.lifetime_money, 10000)
-	if id == "money_1m":
-		return Vector2i(game_state.lifetime_money, 1000000)
-	if id == "normal_25":
-		return Vector2i(game_state.get_clicked_count("normal"), 25)
-	if id == "goober_40":
-		return Vector2i(1 if game_state.secret_shop_unlocked else 0, 1)
-	return Vector2i(-1, -1)

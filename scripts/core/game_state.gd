@@ -20,6 +20,7 @@ const SECRET_UPGRADE_COSTS := {
 
 var money: int = 0
 var lifetime_money: int = 0
+var stats: Dictionary = {"money_earned": 0}
 var click_level: int = 0
 var auto_level: int = 0
 var goober_clicks_total: int = 0
@@ -40,7 +41,12 @@ func add_money(amount: int) -> void:
 		return
 	money += amount
 	lifetime_money += amount
+	stats["money_earned"] = int(stats.get("money_earned", 0)) + amount
 	changed.emit()
+
+
+func get_money_earned_total() -> int:
+	return int(stats.get("money_earned", 0))
 
 
 func set_money(value: int) -> void:

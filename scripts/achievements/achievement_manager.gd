@@ -63,6 +63,64 @@ func is_unlocked(id: String) -> bool:
 	return unlocked_ids.has(id)
 
 
+func get_progress(id: String) -> Vector2i:
+	if id == "first_click":
+		return Vector2i(game_state.button_clicks_total, 1)
+	if id == "hundred_clicks":
+		return Vector2i(game_state.button_clicks_total, 100)
+	if id == "clicks_1k":
+		return Vector2i(game_state.button_clicks_total, 1000)
+	if id == "clicks_10k":
+		return Vector2i(game_state.button_clicks_total, 10000)
+	if id == "clicks_100k":
+		return Vector2i(game_state.button_clicks_total, 100000)
+	if id == "clicks_1m":
+		return Vector2i(game_state.button_clicks_total, 1000000)
+	if id == "money_10k":
+		return Vector2i(game_state.get_money_earned_total(), 10000)
+	if id == "money_1m":
+		return Vector2i(game_state.get_money_earned_total(), 1000000)
+	if id == "money_10m":
+		return Vector2i(game_state.get_money_earned_total(), 10000000)
+	if id == "money_1b":
+		return Vector2i(game_state.get_money_earned_total(), 1000000000)
+	if id == "money_1t":
+		return Vector2i(game_state.get_money_earned_total(), 1000000000000)
+	if id == "normal_25":
+		return Vector2i(game_state.get_clicked_count("normal"), 25)
+	if id == "gold_3":
+		return Vector2i(game_state.get_clicked_count("gold"), 3)
+	if id == "rgb_1":
+		return Vector2i(game_state.get_clicked_count("rgb"), 1)
+	if id == "rgb_5":
+		return Vector2i(game_state.get_clicked_count("rgb"), 5)
+	if id == "rgb_10":
+		return Vector2i(game_state.get_clicked_count("rgb"), 10)
+	if id == "boss_1":
+		return Vector2i(game_state.get_clicked_count("boss"), 1)
+	if id == "boss_5":
+		return Vector2i(game_state.get_clicked_count("boss"), 5)
+	if id == "boss_10":
+		return Vector2i(game_state.get_clicked_count("boss"), 10)
+	if id == "angry_5":
+		return Vector2i(game_state.get_clicked_count("angry"), 5)
+	if id == "tiny_5":
+		return Vector2i(game_state.get_clicked_count("tiny"), 5)
+	if id == "giant_5":
+		return Vector2i(game_state.get_clicked_count("giant"), 5)
+	if id == "frozen_5":
+		return Vector2i(game_state.get_clicked_count("frozen"), 5)
+	if id == "bomb_5":
+		return Vector2i(game_state.get_clicked_count("bomb"), 5)
+	if id == "upgrade_50":
+		return Vector2i(maxi(game_state.click_level, game_state.auto_level), 50)
+	if id == "upgrade_100":
+		return Vector2i(maxi(game_state.click_level, game_state.auto_level), 100)
+	if id == "goober_40":
+		return Vector2i(1 if game_state.secret_shop_unlocked else 0, 1)
+	return Vector2i(-1, -1)
+
+
 func evaluate() -> void:
 	for id in DEFINITIONS.keys():
 		if is_unlocked(id):
@@ -87,15 +145,15 @@ func _is_met(id: String) -> bool:
 	if id == "clicks_1m":
 		return game_state.button_clicks_total >= 1000000
 	if id == "money_10k":
-		return game_state.lifetime_money >= 10000
+		return game_state.get_money_earned_total() >= 10000
 	if id == "money_1m":
-		return game_state.lifetime_money >= 1000000
+		return game_state.get_money_earned_total() >= 1000000
 	if id == "money_10m":
-		return game_state.lifetime_money >= 10000000
+		return game_state.get_money_earned_total() >= 10000000
 	if id == "money_1b":
-		return game_state.lifetime_money >= 1000000000
+		return game_state.get_money_earned_total() >= 1000000000
 	if id == "money_1t":
-		return game_state.lifetime_money >= 1000000000000
+		return game_state.get_money_earned_total() >= 1000000000000
 	# Canônico: conta apenas goobers do tipo "normal" derrotados (bestiário por tipo).
 	if id == "normal_25":
 		return game_state.get_clicked_count("normal") >= 25
