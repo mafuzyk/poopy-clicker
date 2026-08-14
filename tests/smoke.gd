@@ -79,6 +79,7 @@ func _initialize() -> void:
 	_test_event_on_click_dispatch()
 	_test_shop_full_inventory()
 	_test_active_skills()
+	_test_remaining_achievements()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -242,7 +243,7 @@ func _test_combo_achievements() -> void:
 		total += 1
 	for id2: String in combo_ids:
 		check(AchievementManager.DEFINITIONS.has(id2), "achievement %s definido" % id2)
-	check(total == 43, "total achievements = 43 (39 + 4 missions), atual %d" % total)
+	check(total == 50, "total achievements = 50 (43 + 7 collector/hands/perk/shop), atual %d" % total)
 
 
 func _write_test_save(data: Dictionary, path: String) -> void:
@@ -1401,3 +1402,29 @@ func _test_active_skills() -> void:
 	cs.coinburst_mult = 3.0
 	cs.register_goober_click("gold", 4, 5)
 	check(cs.goober_coins == 15, "gold P0 coinburst 3x = 15")
+
+
+func _test_remaining_achievements() -> void:
+	var state := GameState.new()
+	var manager := AchievementManager.new()
+	manager.setup(state)
+	for i in range(20):
+		state.bestiary_counts["t%d" % i] = {"seen": 1, "clicked": 0}
+	manager.evaluate()
+	check(manager.is_unlocked("collector_20"), "collector_20 unlock (20 vistos)")
+	for i in range(15):
+		state.bestiary_counts["t%d" % i]["clicked"] = 1
+	manager.evaluate()
+	check(manager.is_unlocked("hands_on_15"), "hands_on_15 unlock (15 clicados)")
+	state.perks["economy_click"] = 10
+	manager.evaluate()
+	check(manager.is_unlocked("perk_max"), "perk_max unlock")
+
+	var s2 := GameState.new()
+	s2.goober_coins = 100000
+	for upgrade in GameState.SECRET_UPGRADE_COSTS:
+		check(s2.try_buy_secret_upgrade(upgrade), "compra %s p/ shop_all" % upgrade)
+	var m2 := AchievementManager.new()
+	m2.setup(s2)
+	m2.evaluate()
+	check(m2.is_unlocked("shop_all"), "shop_all unlock")

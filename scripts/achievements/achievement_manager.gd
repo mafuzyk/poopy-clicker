@@ -48,6 +48,13 @@ const DEFINITIONS := {
 	"missions_30": {"name": "Painel limpo", "hint": "Complete 30 missões."},
 	"missions_50": {"name": "Meta cumprida", "hint": "Complete 50 missões."},
 	"missions_100": {"name": "Missões infinitas", "hint": "Complete 100 missões."},
+	"collector_20": {"name": "Arquivo vivo", "hint": "Veja 20 tipos diferentes de goober."},
+	"collector_30": {"name": "Arquivo completo", "hint": "Veja 30 tipos de goober."},
+	"collector_all": {"name": "Enciclopédia viva", "hint": "Veja todos os 38 tipos de goober."},
+	"hands_on_15": {"name": "Mão certeira", "hint": "Clique em 15 tipos diferentes de goober."},
+	"hands_on_25": {"name": "Mão de vaca", "hint": "Clique em 25 tipos."},
+	"perk_max": {"name": "Mestre das perks", "hint": "Tenha uma perk no nível máximo."},
+	"shop_all": {"name": "Colecionadora GC", "hint": "Compre todos os itens da loja."},
 }
 
 var game_state: GameState
@@ -166,6 +173,20 @@ func get_progress(id: String) -> Vector2i:
 		return Vector2i(int(game_state.mission_state.get("completed_total", 0)), 50)
 	if id == "missions_100":
 		return Vector2i(int(game_state.mission_state.get("completed_total", 0)), 100)
+	if id == "collector_20":
+		return Vector2i(game_state.get_collection_unique_seen(), 20)
+	if id == "collector_30":
+		return Vector2i(game_state.get_collection_unique_seen(), 30)
+	if id == "collector_all":
+		return Vector2i(game_state.get_collection_unique_seen(), 38)
+	if id == "hands_on_15":
+		return Vector2i(game_state.get_collection_unique_clicked(), 15)
+	if id == "hands_on_25":
+		return Vector2i(game_state.get_collection_unique_clicked(), 25)
+	if id == "perk_max":
+		return Vector2i(1 if game_state.has_maxed_perk() else 0, 1)
+	if id == "shop_all":
+		return Vector2i(game_state.get_secret_upgrades_bought_count(), 12)
 	return Vector2i(-1, -1)
 
 
@@ -267,4 +288,18 @@ func _is_met(id: String) -> bool:
 		return int(game_state.mission_state.get("completed_total", 0)) >= 50
 	if id == "missions_100":
 		return int(game_state.mission_state.get("completed_total", 0)) >= 100
+	if id == "collector_20":
+		return game_state.get_collection_unique_seen() >= 20
+	if id == "collector_30":
+		return game_state.get_collection_unique_seen() >= 30
+	if id == "collector_all":
+		return game_state.get_collection_unique_seen() >= 38
+	if id == "hands_on_15":
+		return game_state.get_collection_unique_clicked() >= 15
+	if id == "hands_on_25":
+		return game_state.get_collection_unique_clicked() >= 25
+	if id == "perk_max":
+		return game_state.has_maxed_perk()
+	if id == "shop_all":
+		return game_state.get_secret_upgrades_bought_count() >= 12
 	return false

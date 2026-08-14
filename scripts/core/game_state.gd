@@ -201,6 +201,13 @@ func is_perk_maxed(key: String) -> bool:
 	return get_perk_level(key) >= get_perk_max_level(key)
 
 
+func has_maxed_perk() -> bool:
+	for def in PERK_DEFS:
+		if get_perk_level(str(def["key"])) >= int(def["max_level"]):
+			return true
+	return false
+
+
 func try_buy_perk(key: String) -> bool:
 	if get_perk_definition(key).is_empty():
 		return false
