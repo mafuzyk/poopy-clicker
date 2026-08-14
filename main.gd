@@ -22,6 +22,7 @@ const AchievementsPanel = preload("res://scripts/ui/achievements_panel.gd")
 const BestiaryPanel = preload("res://scripts/ui/bestiary_panel.gd")
 const ShellPanel = preload("res://scripts/ui/shell_panel.gd")
 const PrestigePanel = preload("res://scripts/ui/prestige_panel.gd")
+const PerksPanel = preload("res://scripts/ui/perks_panel.gd")
 
 
 var game_state: GameState
@@ -46,6 +47,7 @@ var menu_panel: MenuPanel
 var achievements_panel: AchievementsPanel
 var bestiary_panel: BestiaryPanel
 var prestige_panel: PrestigePanel
+var perks_panel: PerksPanel
 
 
 func _ready() -> void:
@@ -257,7 +259,10 @@ func setup_panels() -> void:
 	prestige_panel.setup(game_state)
 	prestige_panel.prestige_confirmed.connect(_on_prestige_confirmed)
 	panel_manager.register_surface("prestige", prestige_panel)
-	_register_shell("perks", "PERKS", "Melhorias passivas compradas com Poopy Essence.", "chega com o sistema de perks (spec §20).")
+	perks_panel = PerksPanel.new()
+	perks_panel.setup(game_state)
+	perks_panel.buy_perk_requested.connect(on_buy_perk)
+	panel_manager.register_surface("perks", perks_panel)
 	_register_shell("stats", "ESTATÍSTICAS", "Histórico completo da partida: cliques, goobers, ganhos totais.", "chega com o sistema de stats (spec §25).")
 	_register_shell("themes", "TEMAS", "Aparência do jogo: fundo, cores e estilo.", "chega com os temas (spec §21).")
 	_register_shell("settings", "CONFIGURAÇÕES", "Som, texto, desempenho e acessibilidade.", "chega com as configurações (spec §22).")
@@ -314,6 +319,10 @@ func on_buy_click_upgrade() -> void:
 
 func on_buy_auto_upgrade() -> void:
 	game_state.try_buy_auto_upgrade(economy.get_auto_upgrade_cost())
+
+
+func on_buy_perk(key: String) -> void:
+	game_state.try_buy_perk(key)
 
 
 func _on_prestige_confirmed() -> void:

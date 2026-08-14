@@ -59,6 +59,7 @@ func save() -> void:
 		"combo_multiplier": game_state.combo_multiplier,
 		"poopy_essence": game_state.poopy_essence,
 		"prestige_level": game_state.prestige_level,
+		"perks": game_state.perks,
 		"click_level": game_state.click_level,
 		"auto_level": game_state.auto_level,
 		"goober_clicks_total": game_state.goober_clicks_total,
@@ -119,6 +120,7 @@ func load() -> bool:
 	game_state.combo_multiplier = float(data.get("combo_multiplier", 1.0))
 	game_state.poopy_essence = int(data.get("poopy_essence", 0))
 	game_state.prestige_level = int(data.get("prestige_level", 0))
+	game_state.perks = _normalize_perks(data.get("perks", {}))
 	game_state.click_level = int(data.get("click_level", 0))
 	game_state.auto_level = int(data.get("auto_level", 0))
 	game_state.goober_clicks_total = int(data.get("goober_clicks_total", 0))
@@ -193,3 +195,11 @@ func _normalize_stats(stats: Dictionary) -> Dictionary:
 	normalized["events_seen"] = int(normalized.get("events_seen", 0))
 	normalized["prestiges_done"] = int(normalized.get("prestiges_done", 0))
 	return normalized
+
+
+func _normalize_perks(perks: Variant) -> Dictionary:
+	var result: Dictionary = GameState.DEFAULT_PERKS.duplicate()
+	if typeof(perks) == TYPE_DICTIONARY:
+		for key in result.keys():
+			result[key] = int(perks.get(key, 0))
+	return result

@@ -156,7 +156,14 @@ func get_active_definition() -> Dictionary:
 func get_effective_duration(definition: Dictionary) -> float:
 	if duration_override >= 0.0:
 		return duration_override
-	return float(definition.get("duration", 0))
+	var base := float(definition.get("duration", 0))
+	# Canônico: good_events +7%/nível (com int()); bad_events -6%/nível (mín. 3s);
+	# eventos sem campo `good` ficam com a duração base.
+	if definition.get("good") == true:
+		return float(int(base * (1.0 + float(game_state.get_perk_level("good_events")) * 0.07)))
+	if definition.get("good") == false:
+		return float(maxi(3, int(base * (1.0 - float(game_state.get_perk_level("bad_events")) * 0.06))))
+	return base
 
 
 func get_remaining_seconds() -> float:

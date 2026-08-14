@@ -18,6 +18,22 @@ const SECRET_UPGRADE_COSTS := {
 	PANIC_SHIELD: 18,
 }
 
+# Canônico constants.py PERK_DEFS: base_cost e max_level exatos.
+const PERK_DEFS := [
+	{"key": "economy_click", "name": "Economy Click", "desc": "+5% clique por nível", "base_cost": 1, "max_level": 10},
+	{"key": "economy_auto", "name": "Economy Auto", "desc": "+5% auto por nível", "base_cost": 1, "max_level": 10},
+	{"key": "goober_luck", "name": "Goober Luck", "desc": "Aumenta raros e capacidade", "base_cost": 2, "max_level": 5},
+	{"key": "boss_hunter", "name": "Boss Hunter", "desc": "+1% boss, +HP e loot", "base_cost": 2, "max_level": 5},
+	{"key": "good_events", "name": "Good Events", "desc": "+7% duração bons eventos", "base_cost": 1, "max_level": 8},
+	{"key": "bad_events", "name": "Bad Events", "desc": "-6% duração maus eventos", "base_cost": 1, "max_level": 8},
+	{"key": "essence_boost", "name": "Essence Boost", "desc": "Melhora drops de essence", "base_cost": 3, "max_level": 3},
+]
+
+const DEFAULT_PERKS := {
+	"economy_click": 0, "economy_auto": 0, "goober_luck": 0,
+	"boss_hunter": 0, "good_events": 0, "bad_events": 0, "essence_boost": 0,
+}
+
 var money: int = 0
 var lifetime_money: int = 0
 var stats: Dictionary = {"money_earned": 0, "highest_combo": 0, "events_seen": 0, "prestiges_done": 0}
@@ -25,6 +41,7 @@ var combo_count: int = 0
 var combo_multiplier: float = 1.0
 var poopy_essence: int = 0
 var prestige_level: int = 0
+var perks: Dictionary = DEFAULT_PERKS.duplicate()
 var click_level: int = 0
 var auto_level: int = 0
 var goober_clicks_total: int = 0
@@ -101,9 +118,51 @@ func get_prestige_bonus_auto() -> float:
 	return 1.0 + float(prestige_level) * 0.10
 
 
-# Canônico: floor(sqrt(max(0, lifetime_money)) / 120); perks ausentes, então sem bônus.
+# Canônico: floor(sqrt(max(0, lifetime_money)) / 120) + perk essência // 2.
 func calculate_prestige_gain() -> int:
-	return maxi(0, int(floor(sqrt(float(maxi(0, lifetime_money))) / 120.0)))
+	var base := maxi(0, int(floor(sqrt(float(maxi(0, lifetime_money))) / 120.0)))
+	var bonus: int = get_perk_level("essence_boost") / 2
+	return maxi(0, base + bonus)
+
+
+func get_perk_level(key: String) -> int:
+	return int(perks.get(key, 0))
+
+
+func get_perk_definition(key: String) -> Dictionary:
+	for def in PERK_DEFS:
+		if str(def["key"]) == key:
+			return def
+	return {}
+
+
+func get_perk_cost(key: String) -> int:
+	var def := get_perk_definition(key)
+	if def.is_empty():
+		return 0
+	return int(def["base_cost"]) * (get_perk_level(key) + 1)
+
+
+func get_perk_max_level(key: String) -> int:
+	return int(get_perk_definition(key).get("max_level", 0))
+
+
+func is_perk_maxed(key: String) -> bool:
+	return get_perk_level(key) >= get_perk_max_level(key)
+
+
+func try_buy_perk(key: String) -> bool:
+	if get_perk_definition(key).is_empty():
+		return false
+	if is_perk_maxed(key):
+		return false
+	var cost := get_perk_cost(key)
+	if poopy_essence < cost:
+		return false
+	poopy_essence -= cost
+	perks[key] = get_perk_level(key) + 1
+	changed.emit()
+	return true
 
 
 func can_prestige() -> bool:

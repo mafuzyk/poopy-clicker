@@ -10,9 +10,10 @@ func _init(state: GameState) -> void:
 
 
 func get_click_value(event_mult: float = 1.0) -> int:
-	# Canônico: base = int(2^level * prestige_click); event trunca dentro.
+	# Canônico: base = int(2^level * prestige_click); perk e event truncam juntos.
 	var base: int = int(float(1 << game_state.click_level) * game_state.get_prestige_bonus_click())
-	return int(float(base) * event_mult)
+	var perk_mult: float = 1.0 + float(game_state.get_perk_level("economy_click")) * 0.05
+	return int(float(base) * perk_mult * event_mult)
 
 
 func get_next_click_value() -> int:
@@ -26,7 +27,8 @@ func get_auto_value(event_mult: float = 1.0) -> int:
 	if game_state.sneaky_profit_bought:
 		base = int(float(base) * 1.25)
 	base = int(float(base) * game_state.get_prestige_bonus_auto())
-	return int(float(base) * event_mult)
+	var perk_mult: float = 1.0 + float(game_state.get_perk_level("economy_auto")) * 0.05
+	return int(float(base) * perk_mult * event_mult)
 
 
 func get_next_auto_value() -> int:

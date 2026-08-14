@@ -68,6 +68,8 @@ func _initialize() -> void:
 	_test_gc_prestige_lucky()
 	_test_prestige_achievements()
 	_test_runtime_reset_hooks()
+	_test_perks_state_and_purchase()
+	_test_perk_effects()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -649,6 +651,7 @@ func _test_controller_capability_snapshot() -> void:
 
 func _test_goober_snapshot_plumbing() -> void:
 	var manager := GooberManager.new()
+	manager.game_state = GameState.new()
 	check(is_equal_approx(float(manager.event_snapshot["special_money_mult"]), 1.0), "snapshot default: special_money_mult 1.0")
 	check(int(manager.event_snapshot["spawn_bonus"]) == 0, "snapshot default: spawn_bonus 0")
 
@@ -1053,3 +1056,124 @@ func _test_runtime_reset_hooks() -> void:
 	check(manager.click_spawn_counter == 0, "click_spawn_counter reset")
 	check(is_equal_approx(manager.passive_spawn_timer, 12.0), "passive_spawn_timer reset")
 	check(int(manager.event_snapshot["spawn_bonus"]) == 3, "event_snapshot preservado no reset")
+
+
+func _test_perks_state_and_purchase() -> void:
+	var state := GameState.new()
+	check(state.get_perk_level("economy_click") == 0, "perk inicial 0")
+	check(state.get_perk_cost("economy_click") == 1, "economy_click custo 1")
+	check(state.get_perk_cost("goober_luck") == 2, "goober_luck custo 2")
+	check(state.get_perk_cost("essence_boost") == 3, "essence_boost custo 3")
+	check(state.get_perk_max_level("economy_click") == 10, "economy_click max 10")
+	check(state.get_perk_max_level("essence_boost") == 3, "essence_boost max 3")
+
+	state.poopy_essence = 0
+	check(not state.try_buy_perk("economy_click"), "sem essence: nao compra")
+	check(state.get_perk_level("economy_click") == 0, "nivel nao muda sem essence")
+
+	state.poopy_essence = 10
+	check(state.try_buy_perk("economy_click"), "compra economy_click nivel 1")
+	check(state.poopy_essence == 9, "essence 9 apos custo 1")
+	check(state.get_perk_level("economy_click") == 1, "nivel 1")
+	check(state.get_perk_cost("economy_click") == 2, "proximo custo 2")
+
+	var s2 := GameState.new()
+	s2.poopy_essence = 1000
+	for i in range(10):
+		check(s2.try_buy_perk("economy_click"), "compra economia_click %d" % i)
+	check(s2.get_perk_level("economy_click") == 10, "economy_click max 10")
+	check(not s2.try_buy_perk("economy_click"), "nao passa do max")
+	check(not state.try_buy_perk("nao_existe"), "perk invalido rejeitado")
+
+
+func _test_perk_effects() -> void:
+	var state := GameState.new()
+	var econ := Economy.new(state)
+
+	state.click_level = 3
+	check(econ.get_click_value() == 8, "click L3 sem perk = 8")
+	state.perks["economy_click"] = 1
+	check(econ.get_click_value() == 8, "click L3 perk1 = int(8*1.05) = 8")
+	state.perks["economy_click"] = 10
+	check(econ.get_click_value() == 12, "click L3 perk10 = int(8*1.5) = 12")
+	state.perks["economy_click"] = 0
+
+	state.auto_level = 3
+	state.perks["economy_auto"] = 10
+	check(econ.get_auto_value() == 6, "auto L3 perk10 = int(4*1.5) = 6")
+	state.perks["economy_auto"] = 0
+
+	# prestige gain com essence_boost: +level//2.
+	state.lifetime_money = 640000
+	check(state.calculate_prestige_gain() == 6, "essence_boost 0 -> 6")
+	state.perks["essence_boost"] = 2
+	check(state.calculate_prestige_gain() == 7, "essence_boost 2 -> 6 + 1")
+	state.perks["essence_boost"] = 3
+	check(state.calculate_prestige_gain() == 7, "essence_boost 3 -> 6 + 1")
+
+	# duração de eventos (perks good/bad).
+	var em := EventManager.new()
+	em.game_state = state
+	var good_def := EventCatalog.get_event("double_click")
+	var bad_def := EventCatalog.get_event("tiny_button")
+	var none_def := EventCatalog.get_event("mouse_flee")
+	check(em.get_effective_duration(good_def) == 8, "good event base 8")
+	state.perks["good_events"] = 8
+	check(em.get_effective_duration(good_def) == 12, "good_events 8 -> int(8*1.56) = 12")
+	state.perks["good_events"] = 0
+	state.perks["bad_events"] = 1
+	check(em.get_effective_duration(bad_def) == 5, "bad_events 1 -> max(3, int(6*0.94)) = 5")
+	state.perks["bad_events"] = 8
+	check(em.get_effective_duration(bad_def) == 3, "bad_events 8 -> min 3s")
+	check(em.get_effective_duration(none_def) == 7, "evento sem 'good' nao sofre penalidade")
+
+	# goober_luck: money mult + cap.
+	var catalog := GooberCatalog.new()
+	var manager := GooberManager.new()
+	manager.game_state = state
+	manager.catalog = catalog
+	manager.apply_goober_snapshot({})
+	state.secret_shop_unlocked = true
+	state.perks["goober_luck"] = 1
+	var mstate := GameState.new()
+	mstate.secret_shop_unlocked = true
+	manager.game_state = mstate
+	mstate.perks["goober_luck"] = 1
+	manager._on_goober_defeated(_make_fake_goober("gold", manager))
+	check(mstate.get_money_earned_total() == 6500, "gold goober_luck 1 -> 5000*1.30 = 6500")
+	mstate.perks["goober_luck"] = 5
+	manager._on_goober_defeated(_make_fake_goober("gold", manager))
+	check(mstate.get_money_earned_total() == 6500 + 7500, "gold goober_luck 5 -> 5000*1.50 = 7500")
+
+	# cap: 10 + goober_luck + spawn_bonus.
+	var gm := GooberManager.new()
+	gm.game_state = GameState.new()
+	gm.game_state.perks["goober_luck"] = 2
+	check(gm._effective_max_goobers() == 12, "cap 10 + 2 goober_luck")
+
+	# essence payout +1 com essence_boost >= 3.
+	var es := GameState.new()
+	es.secret_shop_unlocked = true
+	es.perks["essence_boost"] = 3
+	var emgr := GooberManager.new()
+	emgr.game_state = es
+	emgr.catalog = GooberCatalog.new()
+	emgr.apply_goober_snapshot({})
+	emgr._on_goober_defeated(_make_fake_goober("royal", emgr))
+	check(es.poopy_essence == 2, "royal essence_boost 3 -> 1 + 1 = 2")
+
+	# save roundtrip perks.
+	var ps := GameState.new()
+	ps.perks["economy_click"] = 5
+	ps.perks["goober_luck"] = 2
+	var psm := SaveManager.new()
+	psm.setup(ps)
+	psm.set_save_path_for_test("user://test_perks.json")
+	psm.save()
+	var pl := GameState.new()
+	var plm := SaveManager.new()
+	plm.setup(pl)
+	plm.set_save_path_for_test("user://test_perks.json")
+	check(plm.load(), "perks save load")
+	check(pl.get_perk_level("economy_click") == 5, "perk economy_click 5 roundtrip")
+	check(pl.get_perk_level("goober_luck") == 2, "perk goober_luck 2 roundtrip")

@@ -62,7 +62,7 @@ func get_goober_snapshot() -> Dictionary:
 
 
 func _effective_max_goobers() -> int:
-	return MAX_GOOBERS + int(event_snapshot["spawn_bonus"])
+	return MAX_GOOBERS + game_state.get_perk_level("goober_luck") + int(event_snapshot["spawn_bonus"])
 
 
 func setup(button: Control, state_ref: GameState) -> void:
@@ -254,9 +254,10 @@ func _on_goober_defeated(goober: Goober) -> void:
 	game_state.register_goober_defeated(goober.type_id)
 	var is_special: bool = goober.type_id != "normal"
 
-	# Canônico (goober.py): payout = money * rarity_mult; depois special_money_mult
-	# apenas para não-normal (quando > 1.0).
-	var payout: int = int(float(data["money"]) * catalog.get_rarity_multiplier(String(data["rarity"])))
+	# Canônico (goober.py): payout = money * (rarity_mult + goober_luck*0.05);
+	# depois special_money_mult apenas para não-normal (quando > 1.0).
+	var rarity_mult: float = catalog.get_rarity_multiplier(String(data["rarity"])) + float(game_state.get_perk_level("goober_luck")) * 0.05
+	var payout: int = int(float(data["money"]) * rarity_mult)
 	var special_money_mult: float = float(event_snapshot["special_money_mult"])
 	if is_special and special_money_mult > 1.0:
 		payout = int(float(payout) * special_money_mult)
@@ -270,11 +271,13 @@ func _on_goober_defeated(goober: Goober) -> void:
 	game_state.add_money(payout)
 
 	# Essence: canônico (goober.py) só paga quando o goober já tem essence_reward > 0;
-	# special_essence_bonus soma apenas nesse caso (e só para não-normal).
+	# essence_boost >= 3 soma +1; special_essence_bonus soma apenas para não-normal.
 	var base_essence: int = int(data.get("essence", 0))
 	var essence_gain := 0
 	if base_essence > 0:
 		essence_gain = base_essence
+		if game_state.get_perk_level("essence_boost") >= 3:
+			essence_gain += 1
 		if is_special:
 			essence_gain += maxi(0, int(event_snapshot["special_essence_bonus"]))
 	if essence_gain > 0:
