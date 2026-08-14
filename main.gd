@@ -32,6 +32,7 @@ const SoundManager = preload("res://scripts/systems/sound_manager.gd")
 const ThemeController = preload("res://scripts/ui/design/theme_controller.gd")
 const LayoutClassifier = preload("res://scripts/ui/design/layout_classifier.gd")
 const MobileGameShell = preload("res://scripts/ui/shell/mobile/mobile_game_shell.gd")
+const LargeScreenGameShell = preload("res://scripts/ui/shell/large/large_screen_game_shell.gd")
 
 
 var game_state: GameState
@@ -245,7 +246,7 @@ func build_ui() -> void:
 	if layout_profile.family == LayoutClassifier.LayoutFamily.MOBILE:
 		_build_mobile_ui()
 	else:
-		_build_legacy_ui()
+		_build_large_screen_ui()
 
 
 func _build_mobile_ui() -> void:
@@ -260,27 +261,16 @@ func _build_mobile_ui() -> void:
 	create_invert_overlay(game_shell.overlay_layer)
 
 
-func _build_legacy_ui() -> void:
-	hud = Hud.new()
-	hud.setup(game_state, economy)
-	hud.menu_requested.connect(panel_manager_open_menu)
-	hud.shop_requested.connect(panel_manager_open_shop)
-	hud.bestiary_requested.connect(panel_manager_open_bestiary)
-	hud.achievements_requested.connect(panel_manager_open_achievements)
-	add_child(hud)
-
-	click_button = Button.new()
-	click_button.name = "ClickButton"
-	click_button.text = "CLICK"
-	click_button.size = Layout.CLICK_BUTTON_SIZE
-	click_button.add_theme_font_size_override("font_size", 24)
-	add_child(click_button)
-
-	event_banner = EventBanner.new()
-	event_banner.setup(event_manager)
-	add_child(event_banner)
-
-	create_invert_overlay(self)
+func _build_large_screen_ui() -> void:
+	game_shell = LargeScreenGameShell.new()
+	game_shell.name = "LargeScreenGameShell"
+	game_shell.setup(game_state, economy, combo_manager, event_manager, theme_controller, layout_profile)
+	game_shell.shop_requested.connect(panel_manager_open_shop)
+	game_shell.bestiary_requested.connect(panel_manager_open_bestiary)
+	game_shell.menu_requested.connect(panel_manager_open_menu)
+	add_child(game_shell)
+	click_button = game_shell.click_target
+	create_invert_overlay(game_shell.overlay_layer)
 
 
 func create_invert_overlay(parent: Node = null) -> void:
