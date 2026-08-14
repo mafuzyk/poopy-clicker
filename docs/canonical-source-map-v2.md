@@ -41,20 +41,21 @@
 | Goobers (38 tipos), recompensas/push/hp/essência | ✅ | ✅ dados reconciliados 100% |
 | Raridades (RARITY_INFO v2) | ✅ | ✅ reconciliado |
 | Spawn (RARITY_SPAWN_WEIGHT / pesos) | ✅ | ⚠ parcial (catalog usa `spawn_weight` sem validar distribuição) |
-| Secret shop (5 upgrades) | ✅ | ⚠ parcial: 5 passivos portados |
-| Goober Shop (loja goobers) | 12 itens canônicos (8 passivos + 4 active skills) | ⚠ parcial: 5 passivos portados (Goober Charm, Heavy Button, Lucky Paws, Sneaky Profit, Panic Shield); faltam Boss Beacon, Essence Magnet, Mission Radar, Cleanse, Frenzy, Skill Shield, Coinburst |
-| Achievements (54 total) | ✅ | ⚠ subset 39 portado (27 + 4 combo + 2 events + 6 prestige/essence) |
+| Secret shop (12 itens) | ✅ | ✅ (8 passivos + 4 active skills; cleanse/frenzy/shield/coinburst funcionais) |
+| Goober Shop (loja goobers) | 12 itens canônicos (8 passivos + 4 active skills) | ✅ (Goober Charm, Heavy Button, Lucky Paws, Sneaky Profit, Panic Shield, Boss Beacon, Essence Magnet, Mission Radar + Cleanse/Frenesi/Escudo/Explosão) |
+| Achievements (54 total) | ✅ | ⚠ subset 52 portado (faltam missions_50/100 já cobertos; collector/hands/perk_max/shop_all/offline/sound inclusos) |
 | Bestiário | ✅ | ✅ |
 | Prestígio + essence | ✅ | ✅ (custo/bônus/ganho atômicos; P3 event weighting; royal/prism/crown; special_essence_bonus; GC prestige; painel funcional) |
-| Perks | ✅ | ❌ |
-| Missões | ✅ | ❌ |
-| Eventos ativos | ✅ | ✅ 35/35 behaviours (efeitos de rare_bonus/boss_bonus deferidos até spawn-raridade/boss existirem) |
+| Perks | ✅ | ✅ (7 perks, custo base*(nível+1), efeitos em economia/eventos/essence/goobers) |
+| Missões | ✅ | ✅ (17 templates, slots 3/4/5, auto-claim) |
+| Eventos ativos | ✅ | ✅ 35/35 behaviours (rare_bonus/boss_bonus agora vivos via spawn model/boss) |
 | Combo/multiplicador | ✅ | ✅ (decay 1.8s; sem eventos de grace) |
-| Coleções/sinergias | ✅ | ❌ |
-| Temas UI | ✅ | ❌ |
-| Partículas | ✅ | ❌ |
-| Som | ✅ | ❌ |
-| Offline progress | ✅ | ❌ |
+| Coleções/sinergias | ✅ | ✅ (11 rewards + 6 synergies; click/auto/push/money ligados) |
+| Boss + spawn raridade | ✅ | ✅ (RARITY_SPAWN_WEIGHT + luck; boss gate + max_hits dinâmico) |
+| Temas UI | ✅ | ⚠ estado/compra/seleção; aplicação visual deferida ao redesign |
+| Partículas | ✅ | ❌ (visual; chega com o redesign) |
+| Som | ✅ | ✅ (26 sfx + SoundManager) |
+| Offline progress | ✅ | ✅ (ganho cap 4/6/10h; settings + last_saved_at) |
 | Save/autosave 60s | ✅ | ✅ (v4 + migrações v1→v4, autosave 60s; sem eventos de save pós-compra — pendente) |
 
 ## Divergências conhecidas (status: reconciliado)

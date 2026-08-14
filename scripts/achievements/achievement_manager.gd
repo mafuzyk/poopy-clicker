@@ -24,6 +24,8 @@ const DEFINITIONS := {
 	"boss_1": {"name": "Boss hunter", "hint": "Derrote 1 boss."},
 	"boss_5": {"name": "Predadora de chefes", "hint": "Derrote 5 bosses."},
 	"boss_10": {"name": "Caça-troféus", "hint": "Derrote 10 bosses."},
+	"boss_25": {"name": "Exterminadora", "hint": "Derrote 25 bosses."},
+	"boss_50": {"name": "Lenda dos bosses", "hint": "Derrote 50 bosses."},
 	"angry_5": {"name": "Rivais", "hint": "Clique 5 angry goobers."},
 	"tiny_5": {"name": "Pequenina", "hint": "Clique 5 tiny goobers."},
 	"giant_5": {"name": "Gigantona", "hint": "Clique 5 giant goobers."},
@@ -127,6 +129,10 @@ func get_progress(id: String) -> Vector2i:
 		return Vector2i(game_state.get_clicked_count("boss"), 5)
 	if id == "boss_10":
 		return Vector2i(game_state.get_clicked_count("boss"), 10)
+	if id == "boss_25":
+		return Vector2i(game_state.get_clicked_count("boss"), 25)
+	if id == "boss_50":
+		return Vector2i(game_state.get_clicked_count("boss"), 50)
 	if id == "angry_5":
 		return Vector2i(game_state.get_clicked_count("angry"), 5)
 	if id == "tiny_5":
@@ -246,6 +252,10 @@ func _is_met(id: String) -> bool:
 		return game_state.get_clicked_count("boss") >= 5
 	if id == "boss_10":
 		return game_state.get_clicked_count("boss") >= 10
+	if id == "boss_25":
+		return game_state.get_clicked_count("boss") >= 25
+	if id == "boss_50":
+		return game_state.get_clicked_count("boss") >= 50
 	if id == "angry_5":
 		return game_state.get_clicked_count("angry") >= 5
 	if id == "tiny_5":

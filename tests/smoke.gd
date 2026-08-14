@@ -245,7 +245,7 @@ func _test_combo_achievements() -> void:
 		total += 1
 	for id2: String in combo_ids:
 		check(AchievementManager.DEFINITIONS.has(id2), "achievement %s definido" % id2)
-	check(total == 52, "total achievements = 52 (50 + offline_10h + sound_off), atual %d" % total)
+	check(total == 54, "total achievements = 54 (completo canonico), atual %d" % total)
 
 
 func _write_test_save(data: Dictionary, path: String) -> void:
