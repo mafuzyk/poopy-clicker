@@ -60,6 +60,7 @@ func _initialize() -> void:
 	_test_prestige_state_and_formulas()
 	_test_prestige_transaction_success()
 	_test_prestige_transaction_failure()
+	_test_prestige_save_migration()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -829,3 +830,81 @@ func _test_prestige_transaction_failure() -> void:
 	check(state.poopy_essence == snapshot["poopy_essence"], "falha: essence intacta")
 	check(state.prestige_level == snapshot["prestige_level"], "falha: prestige intacto")
 	check(_prestige_emissions == 0, "falha: zero emissions (teve %d)" % _prestige_emissions)
+
+
+func _test_prestige_save_migration() -> void:
+	# v4 roundtrip: P7, Essence34, prestiges_done9 preservados.
+	var state := GameState.new()
+	state.prestige_level = 7
+	state.poopy_essence = 34
+	state.stats["prestiges_done"] = 9
+	state.stats["money_earned"] = 5000000
+	state.lifetime_money = 400000
+	var save_manager := SaveManager.new()
+	save_manager.setup(state)
+	save_manager.set_save_path_for_test("user://test_prestige_v4.json")
+	save_manager.save()
+
+	var loaded := GameState.new()
+	var loader := SaveManager.new()
+	loader.setup(loaded)
+	loader.set_save_path_for_test("user://test_prestige_v4.json")
+	check(loader.load(), "load v4 ok")
+	check(loaded.prestige_level == 7, "v4 roundtrip: prestige_level 7")
+	check(loaded.poopy_essence == 34, "v4 roundtrip: poopy_essence 34")
+	check(int(loaded.stats.get("prestiges_done", 0)) == 9, "v4 roundtrip: prestiges_done 9")
+	check(loaded.get_money_earned_total() == 5000000, "v4 roundtrip: money_earned 5000000")
+	check(loaded.lifetime_money == 400000, "v4 roundtrip: lifetime_money 400000")
+
+	# v3 (sem campos de prestige) -> defaults.
+	var v3 := {
+		"save_version": 3,
+		"money": 10,
+		"lifetime_money": 20,
+		"stats": {"money_earned": 20, "highest_combo": 3, "events_seen": 5},
+		"click_level": 2,
+	}
+	_write_test_save(v3, "user://test_prestige_v3.json")
+	var from_v3 := GameState.new()
+	var v3_loader := SaveManager.new()
+	v3_loader.setup(from_v3)
+	v3_loader.set_save_path_for_test("user://test_prestige_v3.json")
+	check(v3_loader.load(), "v3 -> v4 load ok")
+	check(from_v3.prestige_level == 0, "v3 -> v4: prestige 0")
+	check(from_v3.poopy_essence == 0, "v3 -> v4: essence 0")
+	check(int(from_v3.stats.get("prestiges_done", 0)) == 0, "v3 -> v4: prestiges_done 0")
+	check(from_v3.get_money_earned_total() == 20, "v3 -> v4: money_earned preservado")
+
+	# v2 -> v3 -> v4: migração de combo + defaults de prestige.
+	var v2 := {
+		"save_version": 2,
+		"money": 10,
+		"lifetime_money": 30,
+		"stats": {"money_earned": 30},
+		"click_level": 0,
+	}
+	_write_test_save(v2, "user://test_prestige_v2.json")
+	var from_v2 := GameState.new()
+	var v2_loader := SaveManager.new()
+	v2_loader.setup(from_v2)
+	v2_loader.set_save_path_for_test("user://test_prestige_v2.json")
+	check(v2_loader.load(), "v2 -> v4 load ok")
+	check(from_v2.combo_count == 0 and is_equal_approx(from_v2.combo_multiplier, 1.0), "v2 -> v4: combo default")
+	check(from_v2.prestige_level == 0 and from_v2.poopy_essence == 0, "v2 -> v4: prestige defaults")
+
+	# v1 -> v2 -> v3 -> v4: money_earned herdado de lifetime_money + defaults.
+	var v1 := {
+		"save_version": 1,
+		"money": 5,
+		"lifetime_money": 300,
+		"click_level": 0,
+	}
+	_write_test_save(v1, "user://test_prestige_v1.json")
+	var from_v1 := GameState.new()
+	var v1_loader := SaveManager.new()
+	v1_loader.setup(from_v1)
+	v1_loader.set_save_path_for_test("user://test_prestige_v1.json")
+	check(v1_loader.load(), "v1 -> v4 load ok")
+	check(from_v1.get_money_earned_total() == 300, "v1 -> v4: money_earned <- lifetime_money")
+	check(from_v1.prestige_level == 0 and from_v1.poopy_essence == 0, "v1 -> v4: prestige defaults")
+	check(int(from_v1.stats.get("prestiges_done", 0)) == 0, "v1 -> v4: prestiges_done 0")

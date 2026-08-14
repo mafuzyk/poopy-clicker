@@ -2,7 +2,7 @@ extends Node
 
 const GameState = preload("res://scripts/core/game_state.gd")
 
-const SAVE_VERSION: int = 3
+const SAVE_VERSION: int = 4
 const SAVE_PATH: String = "user://save.json"
 const SAVE_TMP_PATH: String = "user://save.json.tmp"
 const AUTOSAVE_INTERVAL: float = 60.0
@@ -57,6 +57,8 @@ func save() -> void:
 		"stats": game_state.stats,
 		"combo_count": game_state.combo_count,
 		"combo_multiplier": game_state.combo_multiplier,
+		"poopy_essence": game_state.poopy_essence,
+		"prestige_level": game_state.prestige_level,
 		"click_level": game_state.click_level,
 		"auto_level": game_state.auto_level,
 		"goober_clicks_total": game_state.goober_clicks_total,
@@ -115,6 +117,8 @@ func load() -> bool:
 	game_state.stats = _normalize_stats(raw_stats if typeof(raw_stats) == TYPE_DICTIONARY else {})
 	game_state.combo_count = int(data.get("combo_count", 0))
 	game_state.combo_multiplier = float(data.get("combo_multiplier", 1.0))
+	game_state.poopy_essence = int(data.get("poopy_essence", 0))
+	game_state.prestige_level = int(data.get("prestige_level", 0))
 	game_state.click_level = int(data.get("click_level", 0))
 	game_state.auto_level = int(data.get("auto_level", 0))
 	game_state.goober_clicks_total = int(data.get("goober_clicks_total", 0))
@@ -149,6 +153,8 @@ func _migrate(data: Dictionary, from_version: int) -> Dictionary:
 				migrated = _migrate_v1_to_v2(migrated)
 			2:
 				migrated = _migrate_v2_to_v3(migrated)
+			3:
+				migrated = _migrate_v3_to_v4(migrated)
 		current += 1
 	migrated["save_version"] = SAVE_VERSION
 	return migrated
@@ -169,11 +175,21 @@ func _migrate_v2_to_v3(data: Dictionary) -> Dictionary:
 	return data
 
 
+func _migrate_v3_to_v4(data: Dictionary) -> Dictionary:
+	data["poopy_essence"] = int(data.get("poopy_essence", 0))
+	data["prestige_level"] = int(data.get("prestige_level", 0))
+	var stats: Dictionary = data.get("stats", {}) if typeof(data.get("stats")) == TYPE_DICTIONARY else {}
+	stats["prestiges_done"] = int(stats.get("prestiges_done", 0))
+	data["stats"] = stats
+	return data
+
+
 # Campos opcionais de stats ganham defaults retroativamente sem bump de schema:
-# saves v1/v2/v3 antigos chegam aqui sem events_seen e continuam válidos.
+# saves v1/v2/v3 antigos chegam aqui sem events_seen/prestiges_done e continuam válidos.
 func _normalize_stats(stats: Dictionary) -> Dictionary:
 	var normalized := stats.duplicate(true)
 	normalized["money_earned"] = int(normalized.get("money_earned", 0))
 	normalized["highest_combo"] = int(normalized.get("highest_combo", 0))
 	normalized["events_seen"] = int(normalized.get("events_seen", 0))
+	normalized["prestiges_done"] = int(normalized.get("prestiges_done", 0))
 	return normalized
