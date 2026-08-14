@@ -26,6 +26,7 @@ const PerksPanel = preload("res://scripts/ui/perks_panel.gd")
 const MissionsPanel = preload("res://scripts/ui/missions_panel.gd")
 const MissionManager = preload("res://scripts/systems/mission_manager.gd")
 const SkillManager = preload("res://scripts/systems/skill_manager.gd")
+const ThemesPanel = preload("res://scripts/ui/themes_panel.gd")
 
 
 var game_state: GameState
@@ -54,6 +55,7 @@ var perks_panel: PerksPanel
 var missions_panel: MissionsPanel
 var mission_manager: MissionManager
 var skill_manager: SkillManager
+var themes_panel: ThemesPanel
 
 
 func _ready() -> void:
@@ -295,7 +297,10 @@ func setup_panels() -> void:
 	missions_panel.setup(game_state)
 	panel_manager.register_surface("missions", missions_panel)
 	_register_shell("stats", "ESTATÍSTICAS", "Histórico completo da partida: cliques, goobers, ganhos totais.", "chega com o sistema de stats (spec §25).")
-	_register_shell("themes", "TEMAS", "Aparência do jogo: fundo, cores e estilo.", "chega com os temas (spec §21).")
+	themes_panel = ThemesPanel.new()
+	themes_panel.setup(game_state)
+	themes_panel.theme_clicked.connect(_on_theme_clicked)
+	panel_manager.register_surface("themes", themes_panel)
 	_register_shell("settings", "CONFIGURAÇÕES", "Som, texto, desempenho e acessibilidade.", "chega com as configurações (spec §22).")
 
 
@@ -354,6 +359,12 @@ func on_buy_auto_upgrade() -> void:
 
 func on_buy_perk(key: String) -> void:
 	game_state.try_buy_perk(key)
+
+
+func _on_theme_clicked(id: String) -> void:
+	if not game_state.is_theme_owned(id):
+		game_state.buy_theme(id)
+	game_state.select_theme(id)
 
 
 func apply_offline_earnings() -> void:

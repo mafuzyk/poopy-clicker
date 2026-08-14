@@ -81,6 +81,7 @@ func _initialize() -> void:
 	_test_active_skills()
 	_test_remaining_achievements()
 	_test_offline_and_settings()
+	_test_themes()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -1456,3 +1457,17 @@ func _test_offline_and_settings() -> void:
 	m3.setup(s3)
 	m3.evaluate()
 	check(m3.is_unlocked("sound_off"), "sound_off unlock")
+
+
+func _test_themes() -> void:
+	var state := GameState.new()
+	check(state.is_theme_owned("default"), "default owned")
+	check(state.get_theme_cost("gold") == 12, "gold custo 12")
+	check(state.get_theme_cost("matrix") == 20, "matrix custo 20")
+	state.goober_coins = 100
+	check(state.buy_theme("gold"), "compra gold")
+	check(state.goober_coins == 88, "gc 100 - 12 = 88")
+	check(state.select_theme("gold"), "seleciona gold")
+	check(state.selected_ui_theme == "gold", "tema selecionado gold")
+	check(not state.select_theme("ice"), "nao seleciona tema nao comprado")
+	check(not state.buy_theme("gold"), "nao re-compra gold")

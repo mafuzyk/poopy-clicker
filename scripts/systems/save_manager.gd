@@ -84,6 +84,8 @@ func save() -> void:
 		"button_clicks_total": game_state.button_clicks_total,
 		"last_saved_at": game_state.last_saved_at,
 		"settings": game_state.settings,
+		"owned_ui_themes": game_state.owned_ui_themes,
+		"selected_ui_theme": game_state.selected_ui_theme,
 	}
 
 	for handler in save_handlers:
@@ -160,6 +162,9 @@ func load() -> bool:
 	game_state.last_saved_at = float(data.get("last_saved_at", 0.0))
 	var raw_settings: Variant = data.get("settings", {})
 	game_state.settings = raw_settings if typeof(raw_settings) == TYPE_DICTIONARY else {"offline_progress": true, "sound_enabled": true}
+	var raw_themes: Variant = data.get("owned_ui_themes", ["default"])
+	game_state.owned_ui_themes = raw_themes if typeof(raw_themes) == TYPE_ARRAY else ["default"]
+	game_state.selected_ui_theme = str(data.get("selected_ui_theme", "default"))
 
 	for handler in save_handlers:
 		handler["setter"].call(data.get(handler["key"], []))

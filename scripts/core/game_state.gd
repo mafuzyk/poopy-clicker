@@ -48,6 +48,17 @@ const DEFAULT_PERKS := {
 	"boss_hunter": 0, "good_events": 0, "bad_events": 0, "essence_boost": 0,
 }
 
+# Canônico UI_THEMES (nome/custo; cores reais chegam com o redesign de UI).
+const UI_THEMES := {
+	"default": {"name": "Default", "cost": 0},
+	"gold": {"name": "Gold", "cost": 12},
+	"ice": {"name": "Ice", "cost": 10},
+	"void": {"name": "Void", "cost": 18},
+	"candy": {"name": "Candy", "cost": 14},
+	"matrix": {"name": "Matrix", "cost": 20},
+	"sunset": {"name": "Sunset", "cost": 16},
+}
+
 # Canônico COLLECTION_REWARDS (money_bonus/luck_bonus exatos).
 const COLLECTION_REWARDS := [
 	{"id": "special_seen", "name": "Colecionadora", "desc": "Veja todos os especiais básicos", "money_bonus": 0.04, "luck_bonus": 0.002},
@@ -109,6 +120,8 @@ var coinburst_mult := 1.0
 # Offline/settings (persistidos).
 var last_saved_at := 0.0
 var settings: Dictionary = {"offline_progress": true, "sound_enabled": true}
+var owned_ui_themes: Array = ["default"]
+var selected_ui_theme: String = "default"
 
 
 func add_money(amount: int) -> void:
@@ -219,6 +232,36 @@ func get_offline_hours_cap() -> int:
 	if prestige_level >= 10:
 		cap += 4
 	return cap
+
+
+# ---------- Temas ----------
+
+
+func is_theme_owned(id: String) -> bool:
+	return owned_ui_themes.has(id)
+
+
+func get_theme_cost(id: String) -> int:
+	return int(UI_THEMES.get(id, {}).get("cost", 0))
+
+
+func buy_theme(id: String) -> bool:
+	if is_theme_owned(id) or goober_coins < get_theme_cost(id):
+		return false
+	goober_coins -= get_theme_cost(id)
+	owned_ui_themes.append(id)
+	changed.emit()
+	return true
+
+
+func select_theme(id: String) -> bool:
+	if not is_theme_owned(id):
+		return false
+	if selected_ui_theme == id:
+		return false
+	selected_ui_theme = id
+	changed.emit()
+	return true
 
 
 func try_buy_perk(key: String) -> bool:
