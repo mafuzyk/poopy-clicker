@@ -48,7 +48,7 @@
 | Prestígio + essence | ✅ | ❌ |
 | Perks | ✅ | ❌ |
 | Missões | ✅ | ❌ |
-| Eventos ativos | ✅ | ⚠ Event Core portado; 7/35 effects habilitados |
+| Eventos ativos | ✅ | ✅ 35/35 behaviours (efeitos de rare_bonus/boss_bonus/special_essence_bonus deferidos até spawn-raridade/boss/essence existirem) |
 | Combo/multiplicador | ✅ | ✅ (decay 1.8s; sem eventos de grace) |
 | Coleções/sinergias | ✅ | ❌ |
 | Temas UI | ✅ | ❌ |
@@ -72,10 +72,18 @@
 - `event_banner.gd` (novo) — UI neutra: título "Nome • Raridade", descrição, barra de progresso (poll 0.15s), cor do evento na borda/barra, mouse_filter IGNORE (não bloqueia touch/click), some sem evento ativo.
 - `click_controller.gd` — clamp de posição e centralização usam o tamanho EFETIVO do botão (`size × scale`): big/tiny_button não vazam pelas bordas nem passam por baixo das barras (corrigido em revisão).
 - Integrações do Event Core — click: `int(base × event click_mult × combo)`; auto: `int(auto × event auto_mult)` (sem combo, fiel); movimento: `difficulty_step × event move_mult` (fórmula base intacta); escala: `progression_scale × event scale_mult` composto (nunca substitui); combo: `combo_grace` convertido ms → s (`900 ms = 0.9 s` → decay 2.7s no snack_break).
+- `feat/canonical-events` — os 28 comportamentos restantes, capability-based (EventManager continua lifecycle-only; main empurra snapshots sem ramificar por ID):
+  - Movimento (tick de efeito 260 ms, fiel ao canônico): gravity `drift_y += 16` antes do invert_move `int(-drift × 0.85)`; edge rebound canônico (zona 8 px redireciona drift para dentro — portado junto do movimento base); center_pull lerp 8% por tick; orbit ângulo 0.12/raio 42 com reset no fim; blink 180 px/14%/±55 com roll injetável para teste; mouse_flee range `220 + difficulty*1.5`, strength `28 + min(lifetime/300k, 2.5) + upgrades*0.6` (termo prestige = 0 até existir); sticky jitter ±5x/±3y por clique via adaptador de dados `EventCatalog.derived_capabilities` (única exceção fora de main.gd, documentada).
+  - Ponteiro virtual compartilhado (mouse + touch Android) com janela de frescor 800 ms: flee/blink só reagem a ponteiro recente e dentro da área de jogo — adaptação mobile deliberada (canônico assume cursor de desktop).
+  - GooberManager snapshot: `spawn_bonus` (cap = MAX_GOOBERS + bonus), `panic_reduce` (`max(1, push - reduce)` antes do clamp), `special_money_mult` só não-normal após o rarity mult, `special_coin_bonus` só não-normal + secret shop, `click_coin_bonus` por clique manual só com secret shop.
+  - invert_colors via overlay full-screen com shader SCREEN_TEXTURE, input-transparent, removido no end/replace (não toca na UI provisória; compatível com o redesign futuro).
+  - Composite data-driven: storm_mode/glitch_flip/hyper_button/heatwave/time_dilation/blessing/mirror_world/safe_zone/overclock/party_mode funcionam por múltiplos capabilities simultâneos, sem branch de ID.
+  - Pool natural = 35/35 habilitados.
+- Plumbing deferido (registrado, não simulado): `rare_bonus` (exige port do modelo de spawn por raridade `RARITY_SPAWN_WEIGHT × (1 + luck*40*(i+1))`), `boss_bonus` (boss sem spawn natural no Godot: `spawn_weight 0.0`/bloqueado), `special_essence_bonus` (Essence não existe até Prestige). Valores fluem pelo snapshot e são testados; efeitos de payout/spawn chegam com seus subsistemas.
 
 **Pendentes (sistemas NÃO portados, fora da reconciliação):**
 - Achievements que dependem de prestígio/perks/missões/coleções/som/offline (21 restantes).
-- 28/35 comportamentos de eventos pendentes (`feat/canonical-events`): invert_colors/invert_move/gravity/sticky/frenzy/mouse_flee/blink/storm_mode/glitch_flip/center_pull/hyper_button/heatwave/time_dilation/treasure_tide/blessing/hellrush/void_window/jackpot_mode/lucky_wave/coin_rain/essence_bloom/boss_hour/moonlight/mirror_world/safe_zone/orbital/overclock/party_mode. Catálogo já tem os 35 dados; motor pronto.
+- Efeitos de evento com subsistema ausente (plumbing já exposto): `rare_bonus` aguarda o modelo de spawn por raridade; `boss_bonus` aguarda spawn natural de boss; `special_essence_bonus` aguarda Essence/Prestige.
 - `RARITY_SPAWN_WEIGHT` do canônico (1.0/0.6/0.35/0.15/0.08) não é usado pelo catalog (usa `spawn_weight` por tipo) — validar quando o spawn completo for portado.
 - `event_on_click` é tupla `(id, duration, name, desc, color)` no canônico — no Godot só o id é armazenado no catalog; duração/desc/cores do EVENT_INFO a portar junto do sistema de eventos.
 - Cores `color` RGBA dos EXTRA_GOOBER_DATA (ex.: slime `(168, 224, 168, 255)`) não aplicadas (catalog usa hex provisórios).
@@ -96,6 +104,9 @@
 **Divergência deliberada (adaptação):**
 - Eventos: o canônico mede duração por wall-clock (`time.time()`), pausa não importa no desktop. No Godot, a duração usa `Timer` de cena — o evento NÃO expira com o jogo pausado/background (evita evento "fantasma" ao voltar). Mesma experiência visual; adaptação aceita.
 - Eventos: o canônico NÃO persiste evento ativo no save (só `stats.events_seen`). Godot igual: evento ativo morre ao sair; `events_seen` persiste via `stats`.
+- Eventos: mouse_flee/blink no canônico assumem cursor de desktop (`QCursor.pos()`). No Godot, um ponteiro virtual compartilhado (mouse + touch) com frescor de 800 ms e exigência de estar dentro da área de jogo — toque velho não faz o botão fugir para sempre. Adaptação mobile deliberada.
+- Eventos: raridades sem candidatos habilitados não entram nos pesos de sorteio (correção deliberada de dead roll; com os 35 habilitados o canônico tem 0 eventos mythic e mythic fica fora da roleta).
+- invert_colors: overlay full-screen com shader SCREEN_TEXTURE (input-transparent) em vez de re-tematizar a UI — a UI atual é provisória; o visual invertido definitivo vem com o sistema de temas.
 - Combo no load: o canônico (PyQt) não persiste o timer — ao carregar, o combo persiste de forma indefinida até o próximo clique/decay. No Godot, após `load()` com `combo_count > 0`, o decay base (1.8s) é reiniciado uma vez (`combo_manager.restart_decay()`), garantindo que o combo ativo expire — o resto do timer (parcial de 1.8s) não é persistido e começa do zero. Fidelidade aceita no slice; revisitar com save de timer se o feel pedir.
 - Aplicação temporal do push: o Python canônico aplica `push_x = vx * push` / `push_y = vy * push` com `push_cooldown = 8` ticks (~240 ms). No Godot, o deslocamento é `velocity * (força atual / 6.0) * delta` contínuo enquanto há contato, preservando a identidade "goober carrega o botão" sem teleporte. Forças e fórmulas de Heavy/Panic são idênticas ao canônico (`max(2, push-3)` / `max(12, push-10)`); apenas a integração temporal difere. Validar o *feel* no Android antes de considerar fidelidade fechada; alinhar o ritmo de push ao canônico se o feel pedir.
 

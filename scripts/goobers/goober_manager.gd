@@ -32,6 +32,36 @@ var goobers: Array[Goober] = []
 var click_spawn_counter := 0
 var passive_spawn_timer := PASSIVE_SPAWN_INTERVAL
 
+# Snapshot de modificadores de evento (fornecido pelo main; manager não conhece
+# EventManager nem ramifica por ID). rare_bonus/boss_bonus/special_essence_bonus
+# são plumbing exposto: chegam aqui e ficam consultáveis, mas o efeito de payout/
+# spawn correspondente é deferido até o subsistema real existir (ver source map).
+var event_snapshot: Dictionary = {
+	"spawn_bonus": 0,
+	"rare_bonus": 0.0,
+	"boss_bonus": 0.0,
+	"panic_reduce": 0,
+	"special_money_mult": 1.0,
+	"special_coin_bonus": 0,
+	"special_essence_bonus": 0,
+}
+
+
+func apply_goober_snapshot(snapshot: Dictionary) -> void:
+	for key in event_snapshot.keys():
+		if snapshot.has(key):
+			event_snapshot[key] = snapshot[key]
+	for goober in goobers:
+		goober.event_panic_reduce = float(event_snapshot["panic_reduce"])
+
+
+func get_goober_snapshot() -> Dictionary:
+	return event_snapshot.duplicate()
+
+
+func _effective_max_goobers() -> int:
+	return MAX_GOOBERS + int(event_snapshot["spawn_bonus"])
+
 
 func setup(button: Control, state_ref: GameState) -> void:
 	click_button = button
@@ -83,7 +113,7 @@ func get_bounds() -> Rect2:
 
 
 func try_spawn_goober() -> void:
-	if goobers.size() >= MAX_GOOBERS:
+	if goobers.size() >= _effective_max_goobers():
 		return
 	spawn_goober_of_type(catalog.roll_type())
 
@@ -92,7 +122,7 @@ func force_spawn(type_id: String) -> bool:
 	if not catalog.is_enabled(type_id):
 		push_warning("GooberManager: tipo bloqueado ou inexistente: " + type_id)
 		return false
-	if goobers.size() >= MAX_GOOBERS:
+	if goobers.size() >= _effective_max_goobers():
 		return false
 	return spawn_goober_of_type(type_id)
 
@@ -108,6 +138,7 @@ func spawn_goober_of_type(type_id: String) -> bool:
 	var goober := Goober.new()
 	goober.name = "Goober%d" % (goobers.size() + 1)
 	goober.setup(shared_frames, base_size, type_id, data, game_state)
+	goober.event_panic_reduce = float(event_snapshot["panic_reduce"])
 	goober.defeated.connect(_on_goober_defeated.bind(goober))
 
 	var goober_size := base_size * float(data["scale"])
@@ -208,6 +239,20 @@ func _on_goober_defeated(goober: Goober) -> void:
 	if data.is_empty():
 		return
 	game_state.register_goober_defeated(goober.type_id)
-	game_state.register_goober_click(goober.type_id, int(data["progress"]), int(data["gc"]))
-	game_state.add_money(int(float(data["money"]) * catalog.get_rarity_multiplier(String(data["rarity"]))))
+	var is_special: bool = goober.type_id != "normal"
+
+	# Canônico (goober.py): payout = money * rarity_mult; depois special_money_mult
+	# apenas para não-normal (quando > 1.0).
+	var payout: int = int(float(data["money"]) * catalog.get_rarity_multiplier(String(data["rarity"])))
+	var special_money_mult: float = float(event_snapshot["special_money_mult"])
+	if is_special and special_money_mult > 1.0:
+		payout = int(float(payout) * special_money_mult)
+
+	# special_coin_bonus: apenas não-normal, apenas com secret shop desbloqueada.
+	var extra_coins := 0
+	if is_special and game_state.secret_shop_unlocked:
+		extra_coins = int(event_snapshot["special_coin_bonus"])
+
+	game_state.register_goober_click(goober.type_id, int(data["progress"]), int(data["gc"]), extra_coins)
+	game_state.add_money(payout)
 	goober_clicked.emit()

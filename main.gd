@@ -8,6 +8,7 @@ const SaveManager = preload("res://scripts/systems/save_manager.gd")
 const GooberManager = preload("res://scripts/goobers/goober_manager.gd")
 const ComboManager = preload("res://scripts/systems/combo_manager.gd")
 const EventManager = preload("res://scripts/systems/event_manager.gd")
+const EventCatalog = preload("res://scripts/data/event_catalog.gd")
 const EventBanner = preload("res://scripts/ui/event_banner.gd")
 const ShopUI = preload("res://scripts/ui/shop_ui.gd")
 const SecretShopUI = preload("res://scripts/ui/secret_shop_ui.gd")
@@ -30,6 +31,7 @@ var goober_manager: GooberManager
 var combo_manager: ComboManager
 var event_manager: EventManager
 var event_banner: EventBanner
+var invert_overlay: ColorRect
 
 var click_button: Button
 var auto_clicker_timer: Timer
@@ -111,11 +113,46 @@ func create_event_manager() -> void:
 	add_child(event_manager)
 
 
-func _apply_event_modifiers(_id: String = "", _definition: Dictionary = {}) -> void:
+func _apply_event_modifiers(id: String = "", definition: Dictionary = {}) -> void:
 	if click_controller == null:
 		return
-	click_controller.set_event_scale_multiplier(event_manager.get_float_modifier("scale_mult", 1.0))
-	click_controller.set_event_move_multiplier(event_manager.get_float_modifier("move_mult", 1.0))
+
+	# Capabilities de movimento/visual: dados canônicos + derivados (adaptador
+	# de dados em EventCatalog; main não ramifica por ID de evento).
+	var caps: Dictionary = definition.duplicate()
+	for key in EventCatalog.derived_capabilities(id).keys():
+		caps[key] = EventCatalog.derived_capabilities(id)[key]
+	click_controller.apply_effect_capabilities(caps)
+
+	if goober_manager != null:
+		goober_manager.apply_goober_snapshot({
+			"spawn_bonus": event_manager.get_float_modifier("spawn_bonus", 0.0),
+			"rare_bonus": event_manager.get_float_modifier("rare_bonus", 0.0),
+			"boss_bonus": event_manager.get_float_modifier("boss_bonus", 0.0),
+			"panic_reduce": event_manager.get_float_modifier("panic_reduce", 0.0),
+			"special_money_mult": event_manager.get_float_modifier("special_money_mult", 1.0),
+			"special_coin_bonus": event_manager.get_float_modifier("special_coin_bonus", 0.0),
+			"special_essence_bonus": event_manager.get_float_modifier("special_essence_bonus", 0.0),
+		})
+
+	if invert_overlay != null:
+		invert_overlay.visible = event_manager.get_bool_modifier("invert_colors", false)
+
+
+func _input(event: InputEvent) -> void:
+	# Ponteiro virtual compartilhado: mouse (desktop) + touch (Android) alimentam
+	# o mesmo pointer do ClickController (flee/blink usam com janela de frescor).
+	if click_controller == null:
+		return
+	var pointer_position := Vector2.INF
+	if event is InputEventMouseMotion:
+		pointer_position = (event as InputEventMouseMotion).position
+	elif event is InputEventScreenTouch:
+		pointer_position = (event as InputEventScreenTouch).position
+	elif event is InputEventScreenDrag:
+		pointer_position = (event as InputEventScreenDrag).position
+	if pointer_position != Vector2.INF:
+		click_controller.set_pointer_position(pointer_position)
 
 
 func setup_goobers() -> void:
@@ -141,6 +178,32 @@ func build_ui() -> void:
 	event_banner = EventBanner.new()
 	event_banner.setup(event_manager)
 	add_child(event_banner)
+
+	create_invert_overlay()
+
+
+func create_invert_overlay() -> void:
+	# Overlay temporário full-screen, transparente a input, que inverte a cena
+	# renderizada enquanto o capability invert_colors está ativo (sem tocar na
+	# UI provisória; será substituído no redesign final).
+	invert_overlay = ColorRect.new()
+	invert_overlay.name = "InvertOverlay"
+	invert_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	invert_overlay.z_index = 100
+	invert_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	invert_overlay.color = Color.WHITE
+	invert_overlay.visible = false
+	var shader := Shader.new()
+	shader.code = "shader_type canvas_item;\n\
+		uniform sampler2D screen_tex : hint_screen_texture, filter_linear;\n\
+		void fragment() {\n\
+			vec4 c = texture(screen_tex, SCREEN_UV);\n\
+			COLOR = vec4(vec3(1.0) - c.rgb, c.a);\n\
+		}"
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	invert_overlay.material = material
+	add_child(invert_overlay)
 
 
 func setup_panels() -> void:
@@ -263,6 +326,10 @@ func on_click() -> void:
 	)
 	game_state.register_button_click()
 	game_state.add_money(click_gain)
+	game_state.goober_coins += compute_click_coin_grant(
+		game_state.secret_shop_unlocked,
+		event_manager.get_float_modifier("click_coin_bonus", 0.0)
+	)
 	combo_manager.register_manual_click(combo_grace_ms_to_seconds(
 		event_manager.get_float_modifier("combo_grace", 0.0)
 	))
@@ -288,6 +355,13 @@ static func compute_auto_gain(base_gain: int, event_auto_mult: float) -> int:
 # combo_grace no canônico é ms (EVENT_INFO); ComboManager usa segundos.
 static func combo_grace_ms_to_seconds(grace_ms: float) -> float:
 	return grace_ms / 1000.0
+
+
+# Canônico: coin_rain concede GC por clique apenas com a secret shop desbloqueada.
+static func compute_click_coin_grant(secret_shop_unlocked: bool, bonus: float) -> int:
+	if not secret_shop_unlocked or bonus <= 0.0:
+		return 0
+	return int(bonus)
 
 
 func on_achievement_unlocked(id: String) -> void:

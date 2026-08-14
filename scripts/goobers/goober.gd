@@ -44,6 +44,8 @@ var escaping := false
 var half_size := 0.0
 var frame_timer := 0.0
 var frame_interval := 0.2
+# Modificador de evento (safe_zone): subtraído do push antes do clamp (canônico).
+var event_panic_reduce := 0.0
 
 var game_state: GameState
 var sprite: AnimatedSprite2D
@@ -193,14 +195,14 @@ func get_effective_normal_push() -> float:
 	var value := push_normal
 	if game_state.heavy_button_bought:
 		value = maxf(HEAVY_BUTTON_PUSH_MIN, value - HEAVY_BUTTON_PUSH_PENALTY)
-	return value
+	return maxf(1.0, value - event_panic_reduce)
 
 
 func get_effective_panic_push() -> float:
 	var value := push_panic
 	if game_state.panic_shield_bought:
 		value = maxf(PANIC_SHIELD_PUSH_MIN, value - PANIC_SHIELD_PUSH_PENALTY)
-	return value
+	return maxf(1.0, value - event_panic_reduce)
 
 
 func get_current_push_force() -> float:

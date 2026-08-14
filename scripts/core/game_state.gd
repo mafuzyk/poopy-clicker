@@ -119,7 +119,7 @@ func try_buy_auto_upgrade(cost: int) -> bool:
 	return true
 
 
-func register_goober_click(type_id: String, progress_reward: int, base_coins: int) -> void:
+func register_goober_click(type_id: String, progress_reward: int, base_coins: int, extra_coins: int = 0) -> void:
 	goober_clicks_total += 1
 	goober_click_progress += maxi(0, progress_reward)
 	if not secret_shop_unlocked and goober_click_progress >= SECRET_SHOP_UNLOCK_CLICKS:
@@ -128,6 +128,7 @@ func register_goober_click(type_id: String, progress_reward: int, base_coins: in
 		var coins: int = maxi(0, base_coins)
 		if lucky_paws_bought and type_id != "normal":
 			coins += 1
+		coins += maxi(0, extra_coins)
 		goober_coins += coins
 	changed.emit()
 

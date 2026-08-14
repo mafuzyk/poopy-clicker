@@ -48,7 +48,8 @@ const EVENT_INFO := {
 	"party_mode": {"good": true, "name": "Party mode", "rarity": "rare", "desc": "Mais especiais e mais moedas por clique em clima de festa.", "duration": 8, "color": "#ffb6d9", "rare_bonus": 0.004, "click_coin_bonus": 1, "special_coin_bonus": 1},
 }
 
-# Pool do random check neste slice: apenas eventos com comportamento validado.
+# Pool do random check neste slice: todos os 35 (comportamentos validados + plumbing deferido).
+# CORE_ENABLED_IDS permanece como registro histórico do subset validado no Event Core.
 const CORE_ENABLED_IDS := [
 	"double_click",
 	"double_auto",
@@ -58,6 +59,20 @@ const CORE_ENABLED_IDS := [
 	"calm",
 	"snack_break",
 ]
+
+# Comportamentos derivados que EVENT_INFO sozinho não expressa (adaptador de dados,
+# mantido fora de main.gd — exceção documentada no source map).
+const DERIVED_CAPABILITIES := {
+	"sticky": {"sticky_jitter": true},
+}
+
+
+static func all_ids() -> Array:
+	return EVENT_INFO.keys()
+
+
+static func derived_capabilities(event_id: String) -> Dictionary:
+	return DERIVED_CAPABILITIES.get(event_id, {})
 
 
 static func get_event(id: String) -> Dictionary:

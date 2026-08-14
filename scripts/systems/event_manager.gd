@@ -30,9 +30,10 @@ var duration_timer: Timer
 var progress_timer: Timer
 
 
-func setup(state: GameState, ids: Array = EventCatalog.CORE_ENABLED_IDS) -> void:
+func setup(state: GameState, ids: Array = []) -> void:
 	game_state = state
-	enabled_ids = ids.duplicate()
+	# Pool padrão: todos os 35; slices/testes podem passar um subset explícito.
+	enabled_ids = ids.duplicate() if not ids.is_empty() else EventCatalog.all_ids()
 
 	check_timer = Timer.new()
 	check_timer.name = "RandomEventCheckTimer"

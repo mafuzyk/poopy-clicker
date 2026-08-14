@@ -11,6 +11,7 @@ const AchievementManager = preload("res://scripts/achievements/achievement_manag
 const EventCatalog = preload("res://scripts/data/event_catalog.gd")
 const EventManager = preload("res://scripts/systems/event_manager.gd")
 const ClickController = preload("res://scripts/systems/click_controller.gd")
+const GooberManager = preload("res://scripts/goobers/goober_manager.gd")
 const Main = preload("res://main.gd")
 
 var failures := 0
@@ -46,6 +47,13 @@ func _initialize() -> void:
 	_test_scale_composition()
 	_test_events_achievements()
 	_test_events_seen_persistence()
+	_test_event_full_pool()
+	_test_derived_capabilities()
+	_test_controller_capability_snapshot()
+	_test_goober_snapshot_plumbing()
+	_test_panic_reduce_push()
+	_test_special_reward_gating()
+	_test_click_coin_gating()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -534,3 +542,140 @@ func _test_events_seen_persistence() -> void:
 	check(old_loader.load(), "load v3 antigo ok")
 	check(old_state.get_events_seen() == 0, "v3 antigo: events_seen normalizado para 0")
 	check(old_state.get_money_earned_total() == 5, "v3 antigo: money_earned preservado")
+
+
+func _test_event_full_pool() -> void:
+	var all_ids: Array = EventCatalog.all_ids()
+	check(all_ids.size() == 35, "pool completo: 35 IDs")
+
+	# Setup sem ids explícitos usa o pool natural completo (35).
+	var state := GameState.new()
+	var manager := EventManager.new()
+	manager.setup(state)
+	root.add_child(manager)
+	check(manager.enabled_ids.size() == 35, "pool natural padrao = 35 habilitados")
+
+	# Qualquer roll de raridade/candidato deve produzir um evento válido.
+	for roll in [0.0, 0.25, 0.5, 0.75, 0.999]:
+		var started := manager.try_random_event(0.0, roll, 0.5)
+		check(started, "try_random_event com roll %.3f inicia evento" % roll)
+		if manager.has_active_event():
+			check(EventCatalog.EVENT_INFO.has(manager.get_active_event_id()), "evento sorteado no catalogo")
+		manager.end_event()
+
+
+func _test_derived_capabilities() -> void:
+	check(EventCatalog.derived_capabilities("sticky") == {"sticky_jitter": true}, "sticky: jitter derivado")
+	check(EventCatalog.derived_capabilities("calm") == {}, "calm: sem capacidades derivadas")
+	check(EventCatalog.derived_capabilities("nao_existe") == {}, "id desconhecido: derivados vazios")
+
+
+func _make_controller(state: GameState) -> ClickController:
+	var controller := ClickController.new()
+	controller.game_state = state
+	controller.click_button = Button.new()
+	return controller
+
+
+func _test_controller_capability_snapshot() -> void:
+	var state := GameState.new()
+	var controller := _make_controller(state)
+
+	check(is_equal_approx(controller.event_move_multiplier, 1.0), "controller: move_mult default 1.0")
+	check(is_equal_approx(controller.event_scale_multiplier, 1.0), "controller: scale_mult default 1.0")
+	check(not controller.gravity_active, "controller: gravity default false")
+
+	controller.apply_effect_capabilities({"move_mult": 1.25, "gravity": true})
+	check(is_equal_approx(controller.event_move_multiplier, 1.25), "storm_mode: move_mult 1.25")
+	check(controller.gravity_active, "storm_mode: gravity ativo")
+	check(not controller.invert_move_active, "storm_mode: sem invert_move")
+
+	controller.apply_effect_capabilities({"move_mult": 1.45, "mouse_flee": true})
+	check(controller.mouse_flee_active, "heatwave: mouse_flee ativo")
+	check(not controller.gravity_active, "heatwave: gravity resetado (snapshot substitui)")
+
+	controller.apply_effect_capabilities({"invert_move": true, "blink": true})
+	check(controller.invert_move_active and controller.blink_active, "glitch_flip: invert+blink compostos")
+	check(is_equal_approx(controller.event_move_multiplier, 1.0), "glitch_flip: move_mult volta 1.0")
+
+	# Fim de evento: snapshot vazio reseta tudo.
+	controller.apply_effect_capabilities({})
+	check(not controller.invert_move_active and not controller.blink_active, "end: flags resetadas")
+	check(is_equal_approx(controller.event_move_multiplier, 1.0), "end: move_mult 1.0")
+	check(is_equal_approx(controller.event_scale_multiplier, 1.0), "end: scale_mult 1.0")
+
+
+func _test_goober_snapshot_plumbing() -> void:
+	var manager := GooberManager.new()
+	check(is_equal_approx(float(manager.event_snapshot["special_money_mult"]), 1.0), "snapshot default: special_money_mult 1.0")
+	check(int(manager.event_snapshot["spawn_bonus"]) == 0, "snapshot default: spawn_bonus 0")
+
+	manager.apply_goober_snapshot({
+		"spawn_bonus": 4,
+		"rare_bonus": 0.01,
+		"boss_bonus": 0.05,
+		"panic_reduce": 8,
+		"special_money_mult": 1.5,
+		"special_coin_bonus": 2,
+		"special_essence_bonus": 1,
+	})
+	var snapshot := manager.get_goober_snapshot()
+	check(int(snapshot["spawn_bonus"]) == 4, "snapshot: spawn_bonus 4")
+	check(is_equal_approx(float(snapshot["rare_bonus"]), 0.01), "plumbing: rare_bonus 0.01 exposto")
+	check(is_equal_approx(float(snapshot["boss_bonus"]), 0.05), "plumbing: boss_bonus 0.05 exposto")
+	check(int(snapshot["special_essence_bonus"]) == 1, "plumbing: special_essence_bonus 1 exposto")
+	check(int(snapshot["panic_reduce"]) == 8, "snapshot: panic_reduce 8")
+	check(is_equal_approx(float(snapshot["special_money_mult"]), 1.5), "snapshot: special_money_mult 1.5")
+
+	check(manager._effective_max_goobers() == 14, "spawn cap = 10 + 4")
+	manager.apply_goober_snapshot({"spawn_bonus": 0})
+	check(manager._effective_max_goobers() == 10, "spawn cap volta a 10")
+
+
+func _test_panic_reduce_push() -> void:
+	var catalog := GooberCatalog.new()
+	var state := GameState.new()
+	var data := catalog.get_type("boss")
+	var goober := Goober.new()
+	goober.setup(null, 86.0, "boss", data, state)
+	var base := goober.get_current_push_force()
+	goober.event_panic_reduce = 8.0
+	check(is_equal_approx(goober.get_current_push_force(), maxf(1.0, base - 8.0)), "panic_reduce subtrai do push")
+	goober.event_panic_reduce = 999.0
+	check(is_equal_approx(goober.get_current_push_force(), 1.0), "push clampado em 1.0")
+
+
+func _test_special_reward_gating() -> void:
+	# special_money_mult: apenas goobers não-normal (canônico goober.py:590-593).
+	var state := GameState.new()
+	state.secret_shop_unlocked = true
+	var manager := GooberManager.new()
+	manager.game_state = state
+	manager.catalog = GooberCatalog.new()
+	manager.apply_goober_snapshot({"special_money_mult": 1.5, "special_coin_bonus": 2})
+
+	var before_coins := state.goober_coins
+	manager._on_goober_defeated(_make_fake_goober("gold", manager))
+	check(state.get_money_earned_total() == 9375, "gold: 5000 * 1.25 * 1.5 = 9375")
+	check(state.goober_coins == before_coins + 7, "gold: gc 5 + special_coin 2 = 7")
+
+	var normal_before := state.goober_coins
+	manager._on_goober_defeated(_make_fake_goober("normal", manager))
+	check(state.get_money_earned_total() == 9375, "normal: money 0, sem special_money_mult")
+	check(state.goober_coins == normal_before + 1, "normal: gc 1 sem special_coin_bonus")
+
+
+func _make_fake_goober(type_id: String, manager: GooberManager) -> Goober:
+	var data := manager.catalog.get_type(type_id) if manager.catalog != null else GooberCatalog.new().get_type(type_id)
+	var goober := Goober.new()
+	goober.type_id = type_id
+	goober.game_state = manager.game_state
+	goober.setup(null, 86.0, type_id, data, manager.game_state)
+	return goober
+
+
+func _test_click_coin_gating() -> void:
+	check(Main.compute_click_coin_grant(true, 1.0) == 1, "click_coin_bonus com secret shop = 1")
+	check(Main.compute_click_coin_grant(false, 1.0) == 0, "click_coin_bonus SEM secret shop = 0")
+	check(Main.compute_click_coin_grant(true, 0.0) == 0, "click_coin_bonus 0 = 0")
+	check(Main.compute_click_coin_grant(true, 2.5) == 2, "click_coin_bonus 2.5 -> int 2")
