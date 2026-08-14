@@ -10,10 +10,11 @@ func _init(state: GameState) -> void:
 
 
 func get_click_value(event_mult: float = 1.0) -> int:
-	# Canônico: base = int(2^level * prestige_click); perk e event truncam juntos.
-	var base: int = int(float(1 << game_state.click_level) * game_state.get_prestige_bonus_click())
+	# Canônico: base = int(2^level * prestige_click * collection_money);
+	# perk e event e synergy truncam juntos.
+	var base: int = int(float(1 << game_state.click_level) * game_state.get_prestige_bonus_click() * game_state.get_collection_money_bonus())
 	var perk_mult: float = 1.0 + float(game_state.get_perk_level("economy_click")) * 0.05
-	return int(float(base) * perk_mult * event_mult)
+	return int(float(base) * perk_mult * event_mult * game_state.get_synergy_click_mult())
 
 
 func get_next_click_value() -> int:
@@ -26,9 +27,9 @@ func get_auto_value(event_mult: float = 1.0) -> int:
 	var base: int = 1 << (game_state.auto_level - 1)
 	if game_state.sneaky_profit_bought:
 		base = int(float(base) * 1.25)
-	base = int(float(base) * game_state.get_prestige_bonus_auto())
+	base = int(float(base) * game_state.get_prestige_bonus_auto() * game_state.get_collection_money_bonus())
 	var perk_mult: float = 1.0 + float(game_state.get_perk_level("economy_auto")) * 0.05
-	return int(float(base) * perk_mult * event_mult)
+	return int(float(base) * perk_mult * event_mult * game_state.get_synergy_auto_mult())
 
 
 func get_next_auto_value() -> int:

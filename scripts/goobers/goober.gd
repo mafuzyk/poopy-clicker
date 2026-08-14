@@ -198,14 +198,16 @@ func get_effective_normal_push() -> float:
 	var value := push_normal
 	if game_state.heavy_button_bought:
 		value = maxf(HEAVY_BUTTON_PUSH_MIN, value - HEAVY_BUTTON_PUSH_PENALTY)
-	return maxf(1.0, value - event_panic_reduce)
+	value = maxf(1.0, value - event_panic_reduce)
+	return maxf(1.0, value / game_state.get_synergy_push_reduce())
 
 
 func get_effective_panic_push() -> float:
 	var value := push_panic
 	if game_state.panic_shield_bought:
 		value = maxf(PANIC_SHIELD_PUSH_MIN, value - PANIC_SHIELD_PUSH_PENALTY)
-	return maxf(1.0, value - event_panic_reduce)
+	value = maxf(1.0, value - event_panic_reduce)
+	return maxf(1.0, value / game_state.get_synergy_push_reduce())
 
 
 func get_current_push_force() -> float:

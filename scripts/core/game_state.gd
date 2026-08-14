@@ -34,9 +34,34 @@ const DEFAULT_PERKS := {
 	"boss_hunter": 0, "good_events": 0, "bad_events": 0, "essence_boost": 0,
 }
 
+# Canônico COLLECTION_REWARDS (money_bonus/luck_bonus exatos).
+const COLLECTION_REWARDS := [
+	{"id": "special_seen", "name": "Colecionadora", "desc": "Veja todos os especiais básicos", "money_bonus": 0.04, "luck_bonus": 0.002},
+	{"id": "special_clicked", "name": "Mão firme", "desc": "Clique em todos os especiais básicos", "money_bonus": 0.06, "luck_bonus": 0.003},
+	{"id": "boss_master", "name": "Mestre dos Boss", "desc": "Derrote 5 bosses", "money_bonus": 0.10, "luck_bonus": 0.004},
+	{"id": "collector_20", "name": "Arquivo Vivo", "desc": "Veja 20 tipos", "money_bonus": 0.05, "luck_bonus": 0.002},
+	{"id": "hands_on_15", "name": "Mão Certeira", "desc": "Clique em 15 tipos", "money_bonus": 0.07, "luck_bonus": 0.003},
+	{"id": "endgame", "name": "Endgame", "desc": "10 bosses, 3 RGB, prestígio 3", "money_bonus": 0.12, "luck_bonus": 0.005},
+	{"id": "collector_30", "name": "Bestiário Vivo", "desc": "Veja 30 tipos", "money_bonus": 0.08, "luck_bonus": 0.004},
+	{"id": "hands_on_25", "name": "Mão de Mestre", "desc": "Clique em 25 tipos", "money_bonus": 0.10, "luck_bonus": 0.005},
+	{"id": "boss_25", "name": "Caça Maior", "desc": "Derrote 25 bosses", "money_bonus": 0.15, "luck_bonus": 0.006},
+	{"id": "prestige_10", "name": "Transcendente", "desc": "Prestígio 10+", "money_bonus": 0.10, "luck_bonus": 0.003},
+	{"id": "upgrade_master", "name": "Upgrade Total", "desc": "Click e auto level 50", "money_bonus": 0.15, "luck_bonus": 0.005},
+]
+
+# Canônico SYNERGY_BONUSES.
+const SYNERGY_BONUSES := [
+	{"id": "defense", "name": "Muralha", "desc": "Heavy Button + Panic Shield: empurrão reduzido em mais 50%", "click_mult": 0.0, "auto_mult": 0.0, "push_reduce": 0.5},
+	{"id": "wealth", "name": "Império", "desc": "Sneaky Profit + Lucky Paws: +15% dinheiro de goobers", "click_mult": 0.0, "auto_mult": 0.0, "goober_money": 0.15},
+	{"id": "hunting", "name": "Caçadora", "desc": "Boss Beacon + Essence Magnet: bosses dropam 2x essence", "boss_essence": 2.0},
+	{"id": "radar", "name": "Visão Total", "desc": "Mission Radar + Goober Charm: missões rendem mais", "mission_money": 0.05, "mission_coins": 1},
+	{"id": "click_master", "name": "Clique Supremo", "desc": "Click e auto level 100: +25% clique e auto", "click_mult": 0.25, "auto_mult": 0.25},
+	{"id": "economy", "name": "Economia Total", "desc": "Economy perks no máximo: +20% clique e auto", "click_mult": 0.20, "auto_mult": 0.20},
+]
+
 var money: int = 0
 var lifetime_money: int = 0
-var stats: Dictionary = {"money_earned": 0, "highest_combo": 0, "events_seen": 0, "prestiges_done": 0}
+var stats: Dictionary = {"money_earned": 0, "highest_combo": 0, "events_seen": 0, "prestiges_done": 0, "collection_rewards_claimed": []}
 var combo_count: int = 0
 var combo_multiplier: float = 1.0
 var poopy_essence: int = 0
@@ -55,6 +80,9 @@ var heavy_button_bought: bool = false
 var lucky_paws_bought: bool = false
 var sneaky_profit_bought: bool = false
 var panic_shield_bought: bool = false
+var boss_beacon_bought: bool = false
+var essence_magnet_bought: bool = false
+var mission_radar_bought: bool = false
 
 
 func add_money(amount: int) -> void:
@@ -163,6 +191,162 @@ func try_buy_perk(key: String) -> bool:
 	perks[key] = get_perk_level(key) + 1
 	changed.emit()
 	return true
+
+
+# ---------- Coleções + Sinergias ----------
+
+
+func get_collection_unique_seen() -> int:
+	var count := 0
+	for type_id in bestiary_counts:
+		if int(bestiary_counts[type_id].get("seen", 0)) > 0:
+			count += 1
+	return count
+
+
+func get_collection_unique_clicked() -> int:
+	var count := 0
+	for type_id in bestiary_counts:
+		if int(bestiary_counts[type_id].get("clicked", 0)) > 0:
+			count += 1
+	return count
+
+
+func _bestiary_clicked(type_id: String) -> int:
+	return int(bestiary_counts.get(type_id, {}).get("clicked", 0))
+
+
+func _special_seen_all() -> bool:
+	for t in ["gold", "angry", "tiny", "giant", "frozen", "bomb", "rgb", "boss"]:
+		if int(bestiary_counts.get(t, {}).get("seen", 0)) <= 0:
+			return false
+	return true
+
+
+func _special_clicked_all() -> bool:
+	for t in ["gold", "angry", "tiny", "giant", "frozen", "bomb", "rgb", "boss"]:
+		if _bestiary_clicked(t) <= 0:
+			return false
+	return true
+
+
+func is_collection_reward_met(id: String) -> bool:
+	match id:
+		"special_seen":
+			return _special_seen_all()
+		"special_clicked":
+			return _special_clicked_all()
+		"boss_master":
+			return _bestiary_clicked("boss") >= 5
+		"collector_20":
+			return get_collection_unique_seen() >= 20
+		"hands_on_15":
+			return get_collection_unique_clicked() >= 15
+		"endgame":
+			return _bestiary_clicked("boss") >= 10 and _bestiary_clicked("rgb") >= 3 and prestige_level >= 3
+		"collector_30":
+			return get_collection_unique_seen() >= 30
+		"hands_on_25":
+			return get_collection_unique_clicked() >= 25
+		"boss_25":
+			return _bestiary_clicked("boss") >= 25
+		"prestige_10":
+			return prestige_level >= 10
+		"upgrade_master":
+			return click_level >= 50 and auto_level >= 50
+	return false
+
+
+func get_claimed_collection_rewards() -> Array:
+	var claimed: Variant = stats.get("collection_rewards_claimed", [])
+	return claimed if typeof(claimed) == TYPE_ARRAY else []
+
+
+func is_collection_reward_claimed(id: String) -> bool:
+	return get_claimed_collection_rewards().has(id)
+
+
+func claim_collection_reward(id: String) -> bool:
+	if is_collection_reward_claimed(id) or not is_collection_reward_met(id):
+		return false
+	var claimed := get_claimed_collection_rewards()
+	claimed.append(id)
+	stats["collection_rewards_claimed"] = claimed
+	changed.emit()
+	return true
+
+
+func get_collection_money_bonus() -> float:
+	var bonus := 1.0
+	for reward in COLLECTION_REWARDS:
+		if is_collection_reward_claimed(str(reward["id"])):
+			bonus += float(reward.get("money_bonus", 0.0))
+	if prestige_level >= 8:
+		bonus = 1.0 + (bonus - 1.0) * 1.25
+	return bonus
+
+
+func get_collection_luck_bonus() -> float:
+	var bonus := 0.0
+	for reward in COLLECTION_REWARDS:
+		if is_collection_reward_claimed(str(reward["id"])):
+			bonus += float(reward.get("luck_bonus", 0.0))
+	if prestige_level >= 8:
+		bonus *= 1.25
+	return bonus
+
+
+func get_active_synergies() -> Array:
+	var active: Array = []
+	for syn in SYNERGY_BONUSES:
+		if is_synergy_active(str(syn["id"])):
+			active.append(syn)
+	return active
+
+
+func is_synergy_active(id: String) -> bool:
+	match id:
+		"defense":
+			return heavy_button_bought and panic_shield_bought
+		"wealth":
+			return sneaky_profit_bought and lucky_paws_bought
+		"hunting":
+			return boss_beacon_bought and essence_magnet_bought
+		"radar":
+			return mission_radar_bought and goober_charm_bought
+		"click_master":
+			return click_level >= 100 and auto_level >= 100
+		"economy":
+			return get_perk_level("economy_click") >= 10 and get_perk_level("economy_auto") >= 10
+	return false
+
+
+func get_synergy_click_mult() -> float:
+	var total := 0.0
+	for syn in get_active_synergies():
+		total += float(syn.get("click_mult", 0.0))
+	return 1.0 + total
+
+
+func get_synergy_auto_mult() -> float:
+	var total := 0.0
+	for syn in get_active_synergies():
+		total += float(syn.get("auto_mult", 0.0))
+	return 1.0 + total
+
+
+func get_synergy_push_reduce() -> float:
+	var total := 0.0
+	for syn in get_active_synergies():
+		total += float(syn.get("push_reduce", 0.0))
+	return 1.0 + total
+
+
+func get_synergy_goober_money_bonus() -> float:
+	var total := 0.0
+	for syn in get_active_synergies():
+		total += float(syn.get("goober_money", 0.0))
+	return total
 
 
 func can_prestige() -> bool:

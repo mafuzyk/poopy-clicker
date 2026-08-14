@@ -70,6 +70,7 @@ func _initialize() -> void:
 	_test_runtime_reset_hooks()
 	_test_perks_state_and_purchase()
 	_test_perk_effects()
+	_test_collections_and_synergies()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -1177,3 +1178,51 @@ func _test_perk_effects() -> void:
 	check(plm.load(), "perks save load")
 	check(pl.get_perk_level("economy_click") == 5, "perk economy_click 5 roundtrip")
 	check(pl.get_perk_level("goober_luck") == 2, "perk goober_luck 2 roundtrip")
+
+
+func _test_collections_and_synergies() -> void:
+	var state := GameState.new()
+	check(is_equal_approx(state.get_collection_money_bonus(), 1.0), "sem recompensas: money bonus 1.0")
+	check(is_equal_approx(state.get_synergy_click_mult(), 1.0), "sem sinergias: click mult 1.0")
+	check(is_equal_approx(state.get_synergy_push_reduce(), 1.0), "sem sinergias: push reduce 1.0")
+
+	state.heavy_button_bought = true
+	state.panic_shield_bought = true
+	check(state.is_synergy_active("defense"), "defense ativa")
+	check(is_equal_approx(state.get_synergy_push_reduce(), 1.5), "defense push_reduce 1.5")
+
+	state.sneaky_profit_bought = true
+	state.lucky_paws_bought = true
+	check(state.is_synergy_active("wealth"), "wealth ativa")
+
+	state.perks["economy_click"] = 10
+	state.perks["economy_auto"] = 10
+	check(state.is_synergy_active("economy"), "economy ativa")
+	check(is_equal_approx(state.get_synergy_click_mult(), 1.20), "economy click mult 1.20")
+	check(is_equal_approx(state.get_synergy_auto_mult(), 1.20), "economy auto mult 1.20")
+
+	var s2 := GameState.new()
+	s2.click_level = 100
+	s2.auto_level = 100
+	check(s2.is_synergy_active("click_master"), "click_master ativa")
+	check(is_equal_approx(s2.get_synergy_click_mult(), 1.25), "click_master click 1.25")
+
+	var s3 := GameState.new()
+	for i in range(20):
+		s3.bestiary_counts["t%d" % i] = {"seen": 1, "clicked": 0}
+	check(s3.is_collection_reward_met("collector_20"), "collector_20 met (20 vistos)")
+	check(not s3.is_collection_reward_met("collector_30"), "collector_30 nao met")
+	check(s3.claim_collection_reward("collector_20"), "claim collector_20")
+	check(s3.is_collection_reward_claimed("collector_20"), "claimed")
+	check(not s3.claim_collection_reward("collector_20"), "nao re-claim")
+	check(is_equal_approx(s3.get_collection_money_bonus(), 1.05), "money bonus 1.05 (collector_20)")
+
+	var s5 := GameState.new()
+	s5.prestige_level = 10
+	check(s5.claim_collection_reward("prestige_10"), "claim prestige_10")
+	check(is_equal_approx(s5.get_collection_money_bonus(), 1.125), "P>=8 money bonus 1.0+0.10*1.25 = 1.125")
+
+	# economia com coleção: click L3 money 1.05 -> int(8*1.05) = 8.
+	s3.click_level = 3
+	var econ := Economy.new(s3)
+	check(econ.get_click_value() == 8, "click L3 + collector_20 money -> 8")

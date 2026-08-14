@@ -254,10 +254,11 @@ func _on_goober_defeated(goober: Goober) -> void:
 	game_state.register_goober_defeated(goober.type_id)
 	var is_special: bool = goober.type_id != "normal"
 
-	# Canônico (goober.py): payout = money * (rarity_mult + goober_luck*0.05);
+	# Canônico (goober.py): payout = money * (rarity_mult + goober_luck*0.05) * collection_money_bonus;
 	# depois special_money_mult apenas para não-normal (quando > 1.0).
 	var rarity_mult: float = catalog.get_rarity_multiplier(String(data["rarity"])) + float(game_state.get_perk_level("goober_luck")) * 0.05
-	var payout: int = int(float(data["money"]) * rarity_mult)
+	var money_mult: float = rarity_mult * game_state.get_collection_money_bonus()
+	var payout: int = int(float(data["money"]) * money_mult)
 	var special_money_mult: float = float(event_snapshot["special_money_mult"])
 	if is_special and special_money_mult > 1.0:
 		payout = int(float(payout) * special_money_mult)
