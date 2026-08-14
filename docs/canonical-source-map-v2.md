@@ -43,19 +43,19 @@
 | Spawn (RARITY_SPAWN_WEIGHT / pesos) | ✅ | ⚠ parcial (catalog usa `spawn_weight` sem validar distribuição) |
 | Secret shop (5 upgrades) | ✅ | ⚠ parcial: 5 passivos portados |
 | Goober Shop (loja goobers) | 12 itens canônicos (8 passivos + 4 active skills) | ⚠ parcial: 5 passivos portados (Goober Charm, Heavy Button, Lucky Paws, Sneaky Profit, Panic Shield); faltam Boss Beacon, Essence Magnet, Mission Radar, Cleanse, Frenzy, Skill Shield, Coinburst |
-| Achievements (54 total) | ✅ | ⚠ subset 33 portado (27 + 4 combo + 2 events) |
+| Achievements (54 total) | ✅ | ⚠ subset 39 portado (27 + 4 combo + 2 events + 6 prestige/essence) |
 | Bestiário | ✅ | ✅ |
-| Prestígio + essence | ✅ | ❌ |
+| Prestígio + essence | ✅ | ✅ (custo/bônus/ganho atômicos; P3 event weighting; royal/prism/crown; special_essence_bonus; GC prestige; painel funcional) |
 | Perks | ✅ | ❌ |
 | Missões | ✅ | ❌ |
-| Eventos ativos | ✅ | ✅ 35/35 behaviours (efeitos de rare_bonus/boss_bonus/special_essence_bonus deferidos até spawn-raridade/boss/essence existirem) |
+| Eventos ativos | ✅ | ✅ 35/35 behaviours (efeitos de rare_bonus/boss_bonus deferidos até spawn-raridade/boss existirem) |
 | Combo/multiplicador | ✅ | ✅ (decay 1.8s; sem eventos de grace) |
 | Coleções/sinergias | ✅ | ❌ |
 | Temas UI | ✅ | ❌ |
 | Partículas | ✅ | ❌ |
 | Som | ✅ | ❌ |
 | Offline progress | ✅ | ❌ |
-| Save/autosave 60s | ✅ | ✅ (v3 + migrações v1→v3, autosave 60s; sem eventos de save pós-compra — pendente) |
+| Save/autosave 60s | ✅ | ✅ (v4 + migrações v1→v4, autosave 60s; sem eventos de save pós-compra — pendente) |
 
 ## Divergências conhecidas (status: reconciliado)
 
@@ -80,7 +80,8 @@
   - invert_colors via overlay full-screen com shader SCREEN_TEXTURE, input-transparent, removido no end/replace (não toca na UI provisória; compatível com o redesign futuro).
   - Composite data-driven: storm_mode/glitch_flip/hyper_button/heatwave/time_dilation/blessing/mirror_world/safe_zone/overclock/party_mode funcionam por múltiplos capabilities simultâneos, sem branch de ID.
   - Pool natural = 35/35 habilitados.
-- Plumbing deferido (registrado, não simulado): `rare_bonus` (exige port do modelo de spawn por raridade `RARITY_SPAWN_WEIGHT × (1 + luck*40*(i+1))`), `boss_bonus` (boss sem spawn natural no Godot: `spawn_weight 0.0`/bloqueado), `special_essence_bonus` (Essence não existe até Prestige). Valores fluem pelo snapshot e são testados; efeitos de payout/spawn chegam com seus subsistemas.
+- Plumbing deferido (registrado, não simulado): `rare_bonus` (exige port do modelo de spawn por raridade `RARITY_SPAWN_WEIGHT × (1 + luck*40*(i+1))`), `boss_bonus` (boss sem spawn natural no Godot: `spawn_weight 0.0`/bloqueado). Valores fluem pelo snapshot e são testados; efeitos de payout/spawn chegam com seus subsistemas.
+- `feat/prestige-essence` — Prestige + Essence canônicos: `try_prestige()` atômico (falha = zero mutação/emissão; sucesso = 1 changed) com reset de run e preservação de `money_earned`/bestiary/cliques; `special_essence_bonus` agora implementado (só com `essence_reward > 0` e não-normal); royal/prism/crown habilitados (Essence existe); GC com `prestige_level // 2` (Lucky Paws segue não-normal-only); P3 rare/epic ×1.08 derivado ao vivo; flee com `P*1.8`; save v4 com migração v1→v2→v3→v4; 6 achievements (39 total); painel de Prestige funcional (2 passos) + aftermath no main (evento ativo sobrevive; respawn natural após 0.2s).
 
 **Pendentes (sistemas NÃO portados, fora da reconciliação):**
 - Achievements que dependem de prestígio/perks/missões/coleções/som/offline (21 restantes).
