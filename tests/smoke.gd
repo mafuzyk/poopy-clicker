@@ -65,6 +65,7 @@ func _initialize() -> void:
 	_test_essence_goobers_enabled()
 	_test_essence_payout()
 	_test_gc_prestige_lucky()
+	_test_prestige_achievements()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -228,7 +229,7 @@ func _test_combo_achievements() -> void:
 		total += 1
 	for id2: String in combo_ids:
 		check(AchievementManager.DEFINITIONS.has(id2), "achievement %s definido" % id2)
-	check(total == 33, "total achievements = 33 (27 + 4 combo + 2 events), atual %d" % total)
+	check(total == 39, "total achievements = 39 (33 + 6 prestige/essence), atual %d" % total)
 
 
 func _write_test_save(data: Dictionary, path: String) -> void:
@@ -1011,3 +1012,26 @@ func _test_gc_prestige_lucky() -> void:
 	state.goober_coins = 0
 	state.register_goober_click("gold", 4, 5)
 	check(state.goober_coins == 0, "shop trancada = 0 GC")
+
+
+func _test_prestige_achievements() -> void:
+	var state := GameState.new()
+	var manager := AchievementManager.new()
+	manager.setup(state)
+	state.poopy_essence = 24
+	manager.evaluate()
+	check(not manager.is_unlocked("essence_25"), "24 essence: locked")
+	state.poopy_essence = 25
+	manager.evaluate()
+	check(manager.is_unlocked("essence_25"), "25 essence: unlock")
+	check(manager.get_progress("essence_25") == Vector2i(25, 25), "progress essence_25 = 25/25")
+
+	check(not manager.is_unlocked("prestige_1"), "P0: prestige_1 locked")
+	state.prestige_level = 1
+	manager.evaluate()
+	check(manager.is_unlocked("prestige_1"), "P1: prestige_1 unlock")
+	state.prestige_level = 5
+	manager.evaluate()
+	check(manager.is_unlocked("prestige_5"), "P5: prestige_5 unlock")
+	check(not manager.is_unlocked("prestige_10"), "P5: prestige_10 locked")
+	check(manager.get_progress("prestige_50") == Vector2i(5, 50), "progress prestige_50 = 5/50")

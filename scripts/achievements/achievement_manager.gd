@@ -38,6 +38,12 @@ const DEFINITIONS := {
 	"combo_300": {"name": "Deusa do ritmo", "hint": "Chegue a combo x300."},
 	"events_25": {"name": "Eventeira", "hint": "Presencie 25 eventos."},
 	"events_100": {"name": "Caos programado", "hint": "Presencie 100 eventos."},
+	"essence_25": {"name": "Cheiro de meta", "hint": "Junte 25 poopy essence."},
+	"prestige_1": {"name": "Essência poopy", "hint": "Faça 1 prestígio."},
+	"prestige_5": {"name": "Recomeço afiado", "hint": "Chegue ao prestígio 5."},
+	"prestige_10": {"name": "Renascida", "hint": "Chegue ao prestígio 10."},
+	"prestige_25": {"name": "Fênix", "hint": "Chegue ao prestígio 25."},
+	"prestige_50": {"name": "Imortal", "hint": "Chegue ao prestígio 50."},
 }
 
 var game_state: GameState
@@ -136,6 +142,18 @@ func get_progress(id: String) -> Vector2i:
 		return Vector2i(game_state.get_events_seen(), 25)
 	if id == "events_100":
 		return Vector2i(game_state.get_events_seen(), 100)
+	if id == "essence_25":
+		return Vector2i(game_state.poopy_essence, 25)
+	if id == "prestige_1":
+		return Vector2i(game_state.prestige_level, 1)
+	if id == "prestige_5":
+		return Vector2i(game_state.prestige_level, 5)
+	if id == "prestige_10":
+		return Vector2i(game_state.prestige_level, 10)
+	if id == "prestige_25":
+		return Vector2i(game_state.prestige_level, 25)
+	if id == "prestige_50":
+		return Vector2i(game_state.prestige_level, 50)
 	return Vector2i(-1, -1)
 
 
@@ -217,4 +235,16 @@ func _is_met(id: String) -> bool:
 		return game_state.get_events_seen() >= 25
 	if id == "events_100":
 		return game_state.get_events_seen() >= 100
+	if id == "essence_25":
+		return game_state.poopy_essence >= 25
+	if id == "prestige_1":
+		return game_state.prestige_level >= 1
+	if id == "prestige_5":
+		return game_state.prestige_level >= 5
+	if id == "prestige_10":
+		return game_state.prestige_level >= 10
+	if id == "prestige_25":
+		return game_state.prestige_level >= 25
+	if id == "prestige_50":
+		return game_state.prestige_level >= 50
 	return false
