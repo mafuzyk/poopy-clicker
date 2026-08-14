@@ -1,6 +1,6 @@
 # Poopy Clicker — Canonical Source Map (Spec V2)
 
-**Status da spec de migração:** o documento `canonical-migration-spec.md` (Spec V1, snapshot poopy_clicker_ui_achievements_collection_polished.py) está **SUPERSEDED** pela Spec V2 (`/storage/emulated/0/Download/poopy_clicker_canonical_migration_spec_v2_peak.md`).
+**Status da spec de migração:** o documento `canonical-migration-spec.md` (Spec V1, snapshot poopy_clicker_ui_achievements_collection_polished.py) está **SUPERSEDED** pela Spec V2 (`docs/canonical-migration-spec-v2.md`).
 
 ## Fonte canônica
 
@@ -41,7 +41,8 @@
 | Goobers (38 tipos), recompensas/push/hp/essência | ✅ | ✅ dados reconciliados 100% |
 | Raridades (RARITY_INFO v2) | ✅ | ✅ reconciliado |
 | Spawn (RARITY_SPAWN_WEIGHT / pesos) | ✅ | ⚠ parcial (catalog usa `spawn_weight` sem validar distribuição) |
-| Secret shop (5 upgrades) | ✅ | ✅ |
+| Secret shop (5 upgrades) | ✅ | ⚠ parcial: 5 passivos portados |
+| Goober Shop (loja goobers) | 12 itens canônicos (8 passivos + 4 active skills) | ⚠ parcial: 5 passivos portados (Goober Charm, Heavy Button, Lucky Paws, Sneaky Profit, Panic Shield); faltam Boss Beacon, Essence Magnet, Mission Radar, Cleanse, Frenzy, Skill Shield, Coinburst |
 | Achievements (54 total) | ✅ | ⚠ subset 27 portado |
 | Bestiário | ✅ | ✅ |
 | Prestígio + essence | ✅ | ❌ |
@@ -72,6 +73,16 @@
 - Boss: `max_hits = 18 + prestige*3 + boss_hunter*2` dinâmico — catalog tem base 18 estática; depende de prestígio/perks.
 - Save: falta `last_saved_at` + saves pós-eventos (prestígio/compra/tema/unlock) e offline progress (Spec V2 §55/§56).
 - `goober_click_progress` (arena progress) é conceito local; canônico usa `goober_clicks_total` simples para secret shop — validar semântica no port do secret shop.
+
+**Fidelity pending (registrado no slice core-regressions-fidelity):**
+- Angry chase behavior (canônico persegue o botão; Godot trata como comum com stats diferentes).
+- Progression speed multiplier (se houver no canônico).
+- Cosmetic tint chance 14% do `normal` (EXTRA_GOOBER_DATA).
+- HP bar de multi-hit (HP > 1 funciona logicamente; sem barra visual).
+- Boss: `max_hits = 18 + prestige*3 + boss_hunter*2` — catalog tem base 18 estática; depende de prestígio/perks.
+- Essence payout (boss/royal/angel/prism/crown) bloqueado até Prestige.
+- `event_on_click` execution (frozen_blessing/bomb_chaos) bloqueado até Events.
+- Stats UI completa (`stats` tem só `money_earned`; `total_clicks`/`goobers_clicked` chegam com stats system).
 
 ## Processo / padrões Godot (Spec V2)
 

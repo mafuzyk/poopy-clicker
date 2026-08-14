@@ -1,3 +1,17 @@
+> # SUPERSEDED / NÃO USAR COMO FONTE CANÔNICA
+>
+> Este documento representa um snapshot antigo da migração.
+>
+> A fonte canônica atual é:
+> `https://github.com/Cherievamp/poopy-clicker`
+>
+> Use:
+> `docs/canonical-migration-spec-v2.md`
+> e
+> `docs/canonical-source-map-v2.md`
+>
+> Se este arquivo divergir do repo canônico atual, este arquivo perde.
+
 # Poopy Clicker — Canonical Godot Migration Spec
 
 **Purpose:** handoff/specification for Deep/OpenCode while the game is being rewritten from Python/PyQt6 to Godot 4 + GDScript.
