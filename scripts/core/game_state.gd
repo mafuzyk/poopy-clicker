@@ -20,9 +20,11 @@ const SECRET_UPGRADE_COSTS := {
 
 var money: int = 0
 var lifetime_money: int = 0
-var stats: Dictionary = {"money_earned": 0, "highest_combo": 0, "events_seen": 0}
+var stats: Dictionary = {"money_earned": 0, "highest_combo": 0, "events_seen": 0, "prestiges_done": 0}
 var combo_count: int = 0
 var combo_multiplier: float = 1.0
+var poopy_essence: int = 0
+var prestige_level: int = 0
 var click_level: int = 0
 var auto_level: int = 0
 var goober_clicks_total: int = 0
@@ -82,6 +84,81 @@ func register_event_seen() -> void:
 
 func get_events_seen() -> int:
 	return int(stats.get("events_seen", 0))
+
+
+# ---------- Prestige + Essence ----------
+
+
+func get_prestige_cost() -> int:
+	return maxi(50000, 250000 * (prestige_level + 1))
+
+
+func get_prestige_bonus_click() -> float:
+	return 1.0 + float(prestige_level) * 0.12
+
+
+func get_prestige_bonus_auto() -> float:
+	return 1.0 + float(prestige_level) * 0.10
+
+
+# Canônico: floor(sqrt(max(0, lifetime_money)) / 120); perks ausentes, então sem bônus.
+func calculate_prestige_gain() -> int:
+	return maxi(0, int(floor(sqrt(float(maxi(0, lifetime_money))) / 120.0)))
+
+
+func can_prestige() -> bool:
+	return money >= get_prestige_cost()
+
+
+func add_poopy_essence(amount: int) -> void:
+	if amount <= 0:
+		return
+	poopy_essence += amount
+	changed.emit()
+
+
+# Transação atômica: nenhuma mutação em falha (zero emissões); sucesso emite
+# exatamente um changed e não usa helpers emissores internos.
+func try_prestige() -> Dictionary:
+	var previous_level := prestige_level
+	if not can_prestige():
+		return {
+			"success": false,
+			"essence_gain": 0,
+			"previous_level": previous_level,
+			"new_level": previous_level,
+		}
+
+	var essence_gain := calculate_prestige_gain()
+
+	poopy_essence += essence_gain
+	prestige_level += 1
+	stats["prestiges_done"] = int(stats.get("prestiges_done", 0)) + 1
+
+	money = 0
+	lifetime_money = 0
+	click_level = 0
+	auto_level = 0
+	goober_clicks_total = 0
+	goober_click_progress = 0
+	goober_coins = 0
+	secret_shop_unlocked = false
+	goober_charm_bought = false
+	heavy_button_bought = false
+	lucky_paws_bought = false
+	sneaky_profit_bought = false
+	panic_shield_bought = false
+	combo_count = 0
+	combo_multiplier = 1.0
+
+	changed.emit()
+
+	return {
+		"success": true,
+		"essence_gain": essence_gain,
+		"previous_level": previous_level,
+		"new_level": prestige_level,
+	}
 
 
 func set_money(value: int) -> void:

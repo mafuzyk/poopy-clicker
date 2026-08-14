@@ -55,6 +55,9 @@ func _initialize() -> void:
 	_test_panic_speed_canonical()
 	_test_special_reward_gating()
 	_test_click_coin_gating()
+	_test_prestige_state_and_formulas()
+	_test_prestige_transaction_success()
+	_test_prestige_transaction_failure()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -65,6 +68,7 @@ func _initialize() -> void:
 
 var _seen_changes := 0
 var _load_changes := 0
+var _prestige_emissions := 0
 
 
 func _test_state_change_emission() -> void:
@@ -709,3 +713,90 @@ func _test_click_coin_gating() -> void:
 	check(Main.compute_click_coin_grant(false, 1.0) == 0, "click_coin_bonus SEM secret shop = 0")
 	check(Main.compute_click_coin_grant(true, 0.0) == 0, "click_coin_bonus 0 = 0")
 	check(Main.compute_click_coin_grant(true, 2.5) == 2, "click_coin_bonus 2.5 -> int 2")
+
+
+func _test_prestige_state_and_formulas() -> void:
+	var state := GameState.new()
+	check(state.poopy_essence == 0, "essence inicial 0")
+	check(state.prestige_level == 0, "prestige inicial 0")
+	check(int(state.stats.get("prestiges_done", 0)) == 0, "prestiges_done default 0")
+	check(state.get_prestige_cost() == 250000, "P0 cost 250000")
+	state.prestige_level = 3
+	check(state.get_prestige_cost() == 1000000, "P3 cost 1000000")
+	check(is_equal_approx(state.get_prestige_bonus_click(), 1.36), "P3 click 1.36")
+	check(is_equal_approx(state.get_prestige_bonus_auto(), 1.30), "P3 auto 1.30")
+	state.prestige_level = 0
+	state.lifetime_money = 640000
+	check(state.calculate_prestige_gain() == 6, "640000 -> 6 essence")
+	state.lifetime_money = 0
+	check(state.calculate_prestige_gain() == 0, "0 lifetime -> 0 essence")
+	check(not state.can_prestige(), "money 0 nao pode prestigiar")
+	state.money = 250000
+	check(state.can_prestige(), "money 250000 pode prestigiar (P0)")
+
+
+func _test_prestige_transaction_success() -> void:
+	var state := GameState.new()
+	state.money = 900000
+	state.lifetime_money = 640000
+	state.click_level = 8
+	state.auto_level = 6
+	state.goober_clicks_total = 51
+	state.goober_click_progress = 53
+	state.goober_coins = 77
+	state.secret_shop_unlocked = true
+	state.goober_charm_bought = true
+	state.heavy_button_bought = true
+	state.lucky_paws_bought = true
+	state.sneaky_profit_bought = true
+	state.panic_shield_bought = true
+	state.combo_count = 19
+	state.combo_multiplier = 1.95
+	state.button_clicks_total = 1234
+	state.bestiary_counts["gold"] = {"seen": 7, "clicked": 4}
+	state.stats["money_earned"] = 9000000
+
+	_prestige_emissions = 0
+	state.changed.connect(func() -> void: _prestige_emissions += 1)
+	var result: Dictionary = state.try_prestige()
+
+	check(bool(result["success"]), "prestige sucesso")
+	check(int(result["essence_gain"]) == 6, "essence gain 6")
+	check(int(result["previous_level"]) == 0 and int(result["new_level"]) == 1, "P0->P1")
+	check(state.prestige_level == 1, "prestige_level 1")
+	check(state.poopy_essence == 6, "poopy_essence 6")
+	check(int(state.stats.get("prestiges_done", 0)) == 1, "prestiges_done 1")
+	check(state.money == 0 and state.lifetime_money == 0, "money/lifetime reset")
+	check(state.click_level == 0 and state.auto_level == 0, "upgrades reset")
+	check(state.goober_clicks_total == 0 and state.goober_click_progress == 0, "goober clicks reset")
+	check(state.goober_coins == 0 and not state.secret_shop_unlocked, "gc/shop reset")
+	check(not state.goober_charm_bought and not state.heavy_button_bought and not state.lucky_paws_bought and not state.sneaky_profit_bought and not state.panic_shield_bought, "secret purchases reset")
+	check(state.combo_count == 0 and is_equal_approx(state.combo_multiplier, 1.0), "combo reset")
+	check(state.button_clicks_total == 1234, "button clicks persistem")
+	check(int(state.stats.get("money_earned", 0)) == 9000000, "money_earned persiste")
+	check(int(state.bestiary_counts["gold"]["seen"]) == 7, "bestiary persiste")
+	check(_prestige_emissions == 1, "exatamente 1 changed (teve %d)" % _prestige_emissions)
+
+
+func _test_prestige_transaction_failure() -> void:
+	var state := GameState.new()
+	state.money = 249999
+	state.lifetime_money = 640000
+	state.click_level = 3
+	var snapshot := {
+		"money": state.money,
+		"lifetime_money": state.lifetime_money,
+		"click_level": state.click_level,
+		"poopy_essence": state.poopy_essence,
+		"prestige_level": state.prestige_level,
+	}
+	_prestige_emissions = 0
+	state.changed.connect(func() -> void: _prestige_emissions += 1)
+	var result: Dictionary = state.try_prestige()
+	check(not bool(result["success"]), "falha com money insuficiente")
+	check(state.money == snapshot["money"], "falha: money intacto")
+	check(state.lifetime_money == snapshot["lifetime_money"], "falha: lifetime intacto")
+	check(state.click_level == snapshot["click_level"], "falha: click_level intacto")
+	check(state.poopy_essence == snapshot["poopy_essence"], "falha: essence intacta")
+	check(state.prestige_level == snapshot["prestige_level"], "falha: prestige intacto")
+	check(_prestige_emissions == 0, "falha: zero emissions (teve %d)" % _prestige_emissions)
