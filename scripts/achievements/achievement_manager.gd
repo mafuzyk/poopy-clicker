@@ -32,6 +32,10 @@ const DEFINITIONS := {
 	"upgrade_50": {"name": "Upgradeira", "hint": "Tenha um upgrade no nível 50."},
 	"upgrade_100": {"name": "Upgrade supremo", "hint": "Tenha um upgrade no nível 100."},
 	"goober_40": {"name": "Segredo revelado", "hint": "Desbloqueie a loja goobers."},
+	"combo_25": {"name": "Flow state", "hint": "Chegue a combo x25."},
+	"combo_75": {"name": "Mão impossível", "hint": "Chegue a combo x75."},
+	"combo_150": {"name": "Incontrolável", "hint": "Chegue a combo x150."},
+	"combo_300": {"name": "Deusa do ritmo", "hint": "Chegue a combo x300."},
 }
 
 var game_state: GameState
@@ -118,6 +122,14 @@ func get_progress(id: String) -> Vector2i:
 		return Vector2i(maxi(game_state.click_level, game_state.auto_level), 100)
 	if id == "goober_40":
 		return Vector2i(1 if game_state.secret_shop_unlocked else 0, 1)
+	if id == "combo_25":
+		return Vector2i(game_state.get_highest_combo(), 25)
+	if id == "combo_75":
+		return Vector2i(game_state.get_highest_combo(), 75)
+	if id == "combo_150":
+		return Vector2i(game_state.get_highest_combo(), 150)
+	if id == "combo_300":
+		return Vector2i(game_state.get_highest_combo(), 300)
 	return Vector2i(-1, -1)
 
 
@@ -187,4 +199,12 @@ func _is_met(id: String) -> bool:
 		return game_state.click_level >= 100 or game_state.auto_level >= 100
 	if id == "goober_40":
 		return game_state.secret_shop_unlocked
+	if id == "combo_25":
+		return game_state.get_highest_combo() >= 25
+	if id == "combo_75":
+		return game_state.get_highest_combo() >= 75
+	if id == "combo_150":
+		return game_state.get_highest_combo() >= 150
+	if id == "combo_300":
+		return game_state.get_highest_combo() >= 300
 	return false

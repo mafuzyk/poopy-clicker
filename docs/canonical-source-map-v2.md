@@ -43,19 +43,19 @@
 | Spawn (RARITY_SPAWN_WEIGHT / pesos) | ✅ | ⚠ parcial (catalog usa `spawn_weight` sem validar distribuição) |
 | Secret shop (5 upgrades) | ✅ | ⚠ parcial: 5 passivos portados |
 | Goober Shop (loja goobers) | 12 itens canônicos (8 passivos + 4 active skills) | ⚠ parcial: 5 passivos portados (Goober Charm, Heavy Button, Lucky Paws, Sneaky Profit, Panic Shield); faltam Boss Beacon, Essence Magnet, Mission Radar, Cleanse, Frenzy, Skill Shield, Coinburst |
-| Achievements (54 total) | ✅ | ⚠ subset 27 portado |
+| Achievements (54 total) | ✅ | ⚠ subset 31 portado (27 + 4 combo) |
 | Bestiário | ✅ | ✅ |
 | Prestígio + essence | ✅ | ❌ |
 | Perks | ✅ | ❌ |
 | Missões | ✅ | ❌ |
 | Eventos ativos | ✅ | ❌ |
-| Combo/multiplicador | ✅ | ❌ |
+| Combo/multiplicador | ✅ | ✅ (decay 1.8s; sem eventos de grace) |
 | Coleções/sinergias | ✅ | ❌ |
 | Temas UI | ✅ | ❌ |
 | Partículas | ✅ | ❌ |
 | Som | ✅ | ❌ |
 | Offline progress | ✅ | ❌ |
-| Save/autosave 60s | ✅ | ✅ (autosave 60s; sem eventos de save pós-compra — pendente) |
+| Save/autosave 60s | ✅ | ✅ (v3 + migrações v1→v3, autosave 60s; sem eventos de save pós-compra — pendente) |
 
 ## Divergências conhecidas (status: reconciliado)
 
@@ -63,10 +63,13 @@
 - `goober_catalog.gd` — 16 raridades corrigidas (storm/glitch/plasma/lava/pirate/fairy → legendary; toxic/magnet/ghost/clockwork/arcade → epic; sleepy/chef → rare; angel/devil → mythic). Todos os 38 tipos agora batem campo a campo (money, gc, progress, speed, scale, push, hp, essence) com o canônico via execução real em proot Alpine com PyQt6.
 - `goober_catalog.gd` — removidos `event_on_click` inventados (`frozen_blessing`, `bomb_chaos`) que não existem no `EVENT_INFO` canônico.
 - `click_controller.gd` — fórmula de dificuldade corrigida para `min(28 + (click_level + auto_level) * 3, 120)` (era `24 + total*2`, cap 85).
-- `achievement_manager.gd` — hints alinhados ao canônico; subset expandido de 6 → 27 (viáveis com dados portados: cliques, money acumulado, gold/rgb/boss/angry/tiny/giant/frozen/bomb por tipo, upgrades 50/100).
+- `combo_manager.gd` (novo) — Combo portado fiel: `multiplier = 1.0 + combo_count * 0.05`, decay 1.8s single-shot reiniciado a cada clique manual, ganho usa o multiplicador atual e só então `add_combo()`, `stats.highest_combo` nunca reseta, label `"🔥 Combo x{count} ({multiplier:.1f}x)"`. Sem grace de eventos (pronto para `extra_grace_seconds` quando snack_break for portado). Auto loop NÃO alimenta combo (fiel ao canônico).
+- `achievement_manager.gd` — hints alinhados ao canônico; subset expandido de 6 → 27 → 31 (adicionados combo_25/75/150/300, critério `stats.highest_combo`).
+- `save_manager.gd` — `save_version` 3 com migração sequencial v1→v2→v3 (v1→v2: `stats.money_earned ← lifetime_money`; v2→v3: `combo_count=0`, `combo_multiplier=1.0`, `stats.highest_combo=0`).
 
 **Pendentes (sistemas NÃO portados, fora da reconciliação):**
-- Achievements que dependem de prestígio/perks/missões/combos/coleções/eventos/som/offline (27 restantes).
+- Achievements que dependem de prestígio/perks/missões/coleções/eventos/som/offline (23 restantes).
+- Grace de combo via eventos (`combo_grace`/snack_break) — portar junto do sistema de Events (combo_manager já expõe `extra_grace_seconds`).
 - `RARITY_SPAWN_WEIGHT` do canônico (1.0/0.6/0.35/0.15/0.08) não é usado pelo catalog (usa `spawn_weight` por tipo) — validar quando o spawn completo for portado.
 - `event_on_click` é tupla `(id, duration, name, desc, color)` no canônico — no Godot só o id é armazenado no catalog; duração/desc/cores do EVENT_INFO a portar junto do sistema de eventos.
 - Cores `color` RGBA dos EXTRA_GOOBER_DATA (ex.: slime `(168, 224, 168, 255)`) não aplicadas (catalog usa hex provisórios).
@@ -85,6 +88,7 @@
 - Stats UI completa (`stats` tem só `money_earned`; `total_clicks`/`goobers_clicked` chegam com stats system).
 
 **Divergência deliberada (adaptação):**
+- Combo no load: o canônico (PyQt) não persiste o timer — ao carregar, o combo persiste de forma indefinida até o próximo clique/decay. No Godot, após `load()` com `combo_count > 0`, o decay base (1.8s) é reiniciado uma vez (`combo_manager.restart_decay()`), garantindo que o combo ativo expire — o resto do timer (parcial de 1.8s) não é persistido e começa do zero. Fidelidade aceita no slice; revisitar com save de timer se o feel pedir.
 - Aplicação temporal do push: o Python canônico aplica `push_x = vx * push` / `push_y = vy * push` com `push_cooldown = 8` ticks (~240 ms). No Godot, o deslocamento é `velocity * (força atual / 6.0) * delta` contínuo enquanto há contato, preservando a identidade "goober carrega o botão" sem teleporte. Forças e fórmulas de Heavy/Panic são idênticas ao canônico (`max(2, push-3)` / `max(12, push-10)`); apenas a integração temporal difere. Validar o *feel* no Android antes de considerar fidelidade fechada; alinhar o ritmo de push ao canônico se o feel pedir.
 
 **Dívida técnica conhecida (desnecessário corrigir agora):**

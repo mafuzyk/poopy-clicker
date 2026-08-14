@@ -6,6 +6,7 @@ const Economy = preload("res://scripts/systems/economy.gd")
 const ClickController = preload("res://scripts/systems/click_controller.gd")
 const SaveManager = preload("res://scripts/systems/save_manager.gd")
 const GooberManager = preload("res://scripts/goobers/goober_manager.gd")
+const ComboManager = preload("res://scripts/systems/combo_manager.gd")
 const ShopUI = preload("res://scripts/ui/shop_ui.gd")
 const SecretShopUI = preload("res://scripts/ui/secret_shop_ui.gd")
 const AchievementManager = preload("res://scripts/achievements/achievement_manager.gd")
@@ -24,6 +25,7 @@ var economy: Economy
 var click_controller: ClickController
 var save_manager: SaveManager
 var goober_manager: GooberManager
+var combo_manager: ComboManager
 
 var click_button: Button
 var auto_clicker_timer: Timer
@@ -42,6 +44,7 @@ func _ready() -> void:
 	setup_game()
 	setup_save()
 	create_goober_manager()
+	create_combo_manager()
 	build_ui()
 	setup_click_controller()
 	setup_auto_clicker()
@@ -50,6 +53,8 @@ func _ready() -> void:
 	setup_toast()
 	setup_goobers()
 	save_manager.load()
+	if game_state.combo_count > 0:
+		combo_manager.restart_decay()
 	refresh_ui()
 
 
@@ -83,6 +88,13 @@ func create_goober_manager() -> void:
 	goober_manager = GooberManager.new()
 	goober_manager.name = "GooberManager"
 	add_child(goober_manager)
+
+
+func create_combo_manager() -> void:
+	combo_manager = ComboManager.new()
+	combo_manager.name = "ComboManager"
+	combo_manager.setup(game_state)
+	add_child(combo_manager)
 
 
 func setup_goobers() -> void:
@@ -217,8 +229,12 @@ func setup_auto_clicker() -> void:
 
 
 func on_click() -> void:
+	# Canônico: ganho usa o multiplicador ATUAL; só depois o combo incrementa.
+	var base_gain: int = economy.get_click_value()
+	var click_gain: int = int(float(base_gain) * game_state.get_combo_multiplier())
 	game_state.register_button_click()
-	game_state.add_money(economy.get_click_value())
+	game_state.add_money(click_gain)
+	combo_manager.register_manual_click()
 	goober_manager.register_click()
 
 

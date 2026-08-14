@@ -17,6 +17,7 @@ var economy: Economy
 
 var money_label: Label
 var auto_label: Label
+var combo_label: Label
 var goober_coins_label: Label
 var menu_button: Button
 var shop_button: Button
@@ -73,6 +74,13 @@ func _build_top_bar() -> void:
 	auto_label.modulate = Color(1, 1, 1, 0.85)
 	info.add_child(auto_label)
 
+	combo_label = Label.new()
+	combo_label.name = "ComboLabel"
+	combo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	combo_label.add_theme_font_size_override("font_size", Layout.SUB_INFO_FONT)
+	combo_label.visible = false
+	info.add_child(combo_label)
+
 	goober_coins_label = UiStyles.make_label("GC", Layout.GC_FONT, Color(1.0, 0.85, 0.3))
 	goober_coins_label.name = "GooberCoinsLabel"
 	goober_coins_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -117,6 +125,11 @@ func refresh() -> void:
 		return
 	money_label.text = "$" + NumberFormat.format(game_state.money)
 	auto_label.text = NumberFormat.format(economy.get_auto_value()) + "/s"
+	if game_state.combo_count > 0:
+		combo_label.text = "🔥 Combo x%d (%.1fx)" % [game_state.combo_count, game_state.combo_multiplier]
+		combo_label.visible = true
+	else:
+		combo_label.visible = false
 	goober_coins_label.visible = game_state.secret_shop_unlocked
 	if goober_coins_label.visible:
 		goober_coins_label.text = "GC " + NumberFormat.format(game_state.goober_coins)

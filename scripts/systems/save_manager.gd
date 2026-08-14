@@ -2,7 +2,7 @@ extends Node
 
 const GameState = preload("res://scripts/core/game_state.gd")
 
-const SAVE_VERSION: int = 2
+const SAVE_VERSION: int = 3
 const SAVE_PATH: String = "user://save.json"
 const SAVE_TMP_PATH: String = "user://save.json.tmp"
 const AUTOSAVE_INTERVAL: float = 60.0
@@ -55,6 +55,8 @@ func save() -> void:
 		"money": game_state.money,
 		"lifetime_money": game_state.lifetime_money,
 		"stats": game_state.stats,
+		"combo_count": game_state.combo_count,
+		"combo_multiplier": game_state.combo_multiplier,
 		"click_level": game_state.click_level,
 		"auto_level": game_state.auto_level,
 		"goober_clicks_total": game_state.goober_clicks_total,
@@ -111,6 +113,8 @@ func load() -> bool:
 	game_state.lifetime_money = int(data.get("lifetime_money", 0))
 	var raw_stats: Variant = data.get("stats", {})
 	game_state.stats = raw_stats if typeof(raw_stats) == TYPE_DICTIONARY else {}
+	game_state.combo_count = int(data.get("combo_count", 0))
+	game_state.combo_multiplier = float(data.get("combo_multiplier", 1.0))
 	game_state.click_level = int(data.get("click_level", 0))
 	game_state.auto_level = int(data.get("auto_level", 0))
 	game_state.goober_clicks_total = int(data.get("goober_clicks_total", 0))
@@ -138,8 +142,28 @@ func load() -> bool:
 
 func _migrate(data: Dictionary, from_version: int) -> Dictionary:
 	var migrated := data.duplicate(true)
-	if from_version <= 1:
-		if not migrated.has("stats") or typeof(migrated.get("stats")) != TYPE_DICTIONARY:
-			migrated["stats"] = {"money_earned": int(migrated.get("lifetime_money", 0))}
+	var current := from_version
+	while current < SAVE_VERSION:
+		match current:
+			1:
+				migrated = _migrate_v1_to_v2(migrated)
+			2:
+				migrated = _migrate_v2_to_v3(migrated)
+		current += 1
 	migrated["save_version"] = SAVE_VERSION
 	return migrated
+
+
+func _migrate_v1_to_v2(data: Dictionary) -> Dictionary:
+	if not data.has("stats") or typeof(data.get("stats")) != TYPE_DICTIONARY:
+		data["stats"] = {"money_earned": int(data.get("lifetime_money", 0))}
+	return data
+
+
+func _migrate_v2_to_v3(data: Dictionary) -> Dictionary:
+	var stats: Dictionary = data.get("stats", {}) if typeof(data.get("stats")) == TYPE_DICTIONARY else {}
+	stats["highest_combo"] = int(stats.get("highest_combo", 0))
+	data["stats"] = stats
+	data["combo_count"] = 0
+	data["combo_multiplier"] = 1.0
+	return data

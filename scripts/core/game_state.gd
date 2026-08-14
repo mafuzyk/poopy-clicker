@@ -20,7 +20,9 @@ const SECRET_UPGRADE_COSTS := {
 
 var money: int = 0
 var lifetime_money: int = 0
-var stats: Dictionary = {"money_earned": 0}
+var stats: Dictionary = {"money_earned": 0, "highest_combo": 0}
+var combo_count: int = 0
+var combo_multiplier: float = 1.0
 var click_level: int = 0
 var auto_level: int = 0
 var goober_clicks_total: int = 0
@@ -47,6 +49,30 @@ func add_money(amount: int) -> void:
 
 func get_money_earned_total() -> int:
 	return int(stats.get("money_earned", 0))
+
+
+func increment_combo() -> void:
+	combo_count += 1
+	combo_multiplier = 1.0 + combo_count * 0.05
+	if combo_count > int(stats.get("highest_combo", 0)):
+		stats["highest_combo"] = combo_count
+	changed.emit()
+
+
+func reset_combo() -> void:
+	if combo_count == 0 and combo_multiplier == 1.0:
+		return
+	combo_count = 0
+	combo_multiplier = 1.0
+	changed.emit()
+
+
+func get_combo_multiplier() -> float:
+	return combo_multiplier
+
+
+func get_highest_combo() -> int:
+	return int(stats.get("highest_combo", 0))
 
 
 func set_money(value: int) -> void:
