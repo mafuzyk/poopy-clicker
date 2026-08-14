@@ -27,6 +27,8 @@ const MissionsPanel = preload("res://scripts/ui/missions_panel.gd")
 const MissionManager = preload("res://scripts/systems/mission_manager.gd")
 const SkillManager = preload("res://scripts/systems/skill_manager.gd")
 const ThemesPanel = preload("res://scripts/ui/themes_panel.gd")
+const StatsPanel = preload("res://scripts/ui/stats_panel.gd")
+const SoundManager = preload("res://scripts/systems/sound_manager.gd")
 
 
 var game_state: GameState
@@ -56,6 +58,8 @@ var missions_panel: MissionsPanel
 var mission_manager: MissionManager
 var skill_manager: SkillManager
 var themes_panel: ThemesPanel
+var stats_panel: StatsPanel
+var sound_manager: SoundManager
 
 
 func _ready() -> void:
@@ -66,6 +70,7 @@ func _ready() -> void:
 	create_event_manager()
 	create_mission_manager()
 	create_skill_manager()
+	create_sound_manager()
 	build_ui()
 	setup_click_controller()
 	setup_auto_clicker()
@@ -142,6 +147,19 @@ func create_skill_manager() -> void:
 	skill_manager.name = "SkillManager"
 	skill_manager.setup(game_state)
 	add_child(skill_manager)
+
+
+func create_sound_manager() -> void:
+	sound_manager = SoundManager.new()
+	sound_manager.name = "SoundManager"
+	sound_manager.setup(game_state)
+	add_child(sound_manager)
+	combo_manager.combo_increased.connect(func(_c: int, _m: float) -> void: sound_manager.play("combo_up"))
+	combo_manager.combo_broken.connect(func() -> void: sound_manager.play("combo_break"))
+	event_manager.event_started.connect(func(_id: String, _d: Dictionary) -> void: sound_manager.play("event_start"))
+	event_manager.event_ended.connect(func(_id: String) -> void: sound_manager.play("event_end"))
+	achievement_manager.unlocked.connect(func(_id: String) -> void: sound_manager.play("achievement"))
+	goober_manager.goober_clicked.connect(func() -> void: sound_manager.play("goober_pop"))
 
 
 # start: aplica definition + derived capabilities do evento INICIADO.
@@ -296,11 +314,13 @@ func setup_panels() -> void:
 	missions_panel = MissionsPanel.new()
 	missions_panel.setup(game_state)
 	panel_manager.register_surface("missions", missions_panel)
-	_register_shell("stats", "ESTATÍSTICAS", "Histórico completo da partida: cliques, goobers, ganhos totais.", "chega com o sistema de stats (spec §25).")
 	themes_panel = ThemesPanel.new()
 	themes_panel.setup(game_state)
 	themes_panel.theme_clicked.connect(_on_theme_clicked)
 	panel_manager.register_surface("themes", themes_panel)
+	stats_panel = StatsPanel.new()
+	stats_panel.setup(game_state)
+	panel_manager.register_surface("stats", stats_panel)
 	_register_shell("settings", "CONFIGURAÇÕES", "Som, texto, desempenho e acessibilidade.", "chega com as configurações (spec §22).")
 
 
@@ -346,19 +366,23 @@ func save_now() -> void:
 
 
 func on_secret_buy_requested(upgrade: String) -> void:
-	game_state.try_buy_secret_upgrade(upgrade)
+	if game_state.try_buy_secret_upgrade(upgrade):
+		sound_manager.play("buy")
 
 
 func on_buy_click_upgrade() -> void:
-	game_state.try_buy_click_upgrade(economy.get_click_upgrade_cost())
+	if game_state.try_buy_click_upgrade(economy.get_click_upgrade_cost()):
+		sound_manager.play("upgrade")
 
 
 func on_buy_auto_upgrade() -> void:
-	game_state.try_buy_auto_upgrade(economy.get_auto_upgrade_cost())
+	if game_state.try_buy_auto_upgrade(economy.get_auto_upgrade_cost()):
+		sound_manager.play("upgrade")
 
 
 func on_buy_perk(key: String) -> void:
-	game_state.try_buy_perk(key)
+	if game_state.try_buy_perk(key):
+		sound_manager.play("upgrade")
 
 
 func _on_theme_clicked(id: String) -> void:
@@ -407,6 +431,7 @@ func _on_prestige_confirmed() -> void:
 	prestige_panel.reset_confirm()
 	panel_manager.close_surface("prestige")
 	save_manager.save()
+	sound_manager.play("prestige")
 	toast_ui.show_toast(
 		"Prestige realizado",
 		"+%d Poopy Essence • P%d → P%d" % [
@@ -453,6 +478,7 @@ func on_click() -> void:
 	var click_gain: int = compute_click_gain(event_adjusted_gain, game_state.get_combo_multiplier() * game_state.frenzy_mult)
 	game_state.register_button_click()
 	game_state.add_money(click_gain)
+	sound_manager.play("click_combo" if game_state.combo_count >= 5 else "click")
 	game_state.goober_coins += compute_click_coin_grant(
 		game_state.secret_shop_unlocked,
 		event_manager.get_float_modifier("click_coin_bonus", 0.0)
