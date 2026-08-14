@@ -203,6 +203,7 @@ func register_goober_click(type_id: String, progress_reward: int, base_coins: in
 		secret_shop_unlocked = true
 	if secret_shop_unlocked:
 		var coins: int = maxi(0, base_coins)
+		coins += prestige_level / 2
 		if lucky_paws_bought and type_id != "normal":
 			coins += 1
 		coins += maxi(0, extra_coins)

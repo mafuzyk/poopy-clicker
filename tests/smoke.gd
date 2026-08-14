@@ -62,6 +62,9 @@ func _initialize() -> void:
 	_test_prestige_transaction_failure()
 	_test_prestige_save_migration()
 	_test_prestige_event_weighting()
+	_test_essence_goobers_enabled()
+	_test_essence_payout()
+	_test_gc_prestige_lucky()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
@@ -707,7 +710,7 @@ func _test_panic_speed_canonical() -> void:
 			"panic %s: speed = speed_max + 3" % id)
 		check(panic_speed > walk_max, "panic %s: mais rapido que o andar maximo" % id)
 		checked += 1
-	check(checked == 16, "16 tipos habilitados verificados (sem bloqueados)")
+	check(checked == 19, "19 tipos habilitados verificados (sem bloqueados)")
 
 
 func _test_special_reward_gating() -> void:
@@ -941,3 +944,70 @@ func _test_prestige_event_weighting() -> void:
 	manager2.try_random_event(0.0, 0.57, 0.0)
 	check(manager2.get_active_event_id() == "chaos", "P3: roll 0.57 -> rare (chaos)")
 	manager2.end_event()
+
+
+func _test_essence_goobers_enabled() -> void:
+	var catalog := GooberCatalog.new()
+	check(catalog.is_enabled("royal"), "royal habilitado")
+	check(catalog.is_enabled("prism"), "prism habilitado")
+	check(catalog.is_enabled("crown"), "crown habilitado")
+	check(not catalog.is_enabled("boss"), "boss continua bloqueado")
+	check(not catalog.is_enabled("angel"), "angel continua bloqueado")
+	check(catalog.get_enabled_ids().size() == 19, "19 tipos habilitados (era 16 + 3 essence)")
+
+
+func _test_essence_payout() -> void:
+	# base essence > 0 requer; special_essence_bonus só soma quando a base > 0.
+	var state := GameState.new()
+	state.secret_shop_unlocked = true
+	var manager := GooberManager.new()
+	manager.game_state = state
+	manager.catalog = GooberCatalog.new()
+
+	manager.apply_goober_snapshot({})
+	manager._on_goober_defeated(_make_fake_goober("royal", manager))
+	check(state.poopy_essence == 1, "royal sem evento = +1")
+
+	manager.apply_goober_snapshot({"special_essence_bonus": 1})
+	manager._on_goober_defeated(_make_fake_goober("royal", manager))
+	check(state.poopy_essence == 3, "royal + Essence Bloom = +2 (total 3)")
+
+	manager._on_goober_defeated(_make_fake_goober("prism", manager))
+	check(state.poopy_essence == 5, "prism + bonus = +2 (total 5)")
+
+	manager.apply_goober_snapshot({})
+	manager._on_goober_defeated(_make_fake_goober("crown", manager))
+	check(state.poopy_essence == 6, "crown sem evento = +1 (total 6)")
+
+	manager.apply_goober_snapshot({"special_essence_bonus": 1})
+	manager._on_goober_defeated(_make_fake_goober("gold", manager))
+	check(state.poopy_essence == 6, "gold + Essence Bloom = +0 (sem essence base)")
+	manager._on_goober_defeated(_make_fake_goober("normal", manager))
+	check(state.poopy_essence == 6, "normal + Essence Bloom = +0")
+
+
+func _test_gc_prestige_lucky() -> void:
+	# base GC + prestige//2 + lucky(especial) + special_coin_bonus(especial).
+	var state := GameState.new()
+	state.secret_shop_unlocked = true
+	state.goober_coins = 0
+	state.register_goober_click("gold", 4, 5)
+	check(state.goober_coins == 5, "gold P0 lucky off = 5")
+	state.prestige_level = 2
+	state.goober_coins = 0
+	state.register_goober_click("gold", 4, 5)
+	check(state.goober_coins == 6, "gold P2 lucky off = 6")
+	state.lucky_paws_bought = true
+	state.goober_coins = 0
+	state.register_goober_click("gold", 4, 5)
+	check(state.goober_coins == 7, "gold P2 lucky on = 7")
+	state.goober_coins = 0
+	state.register_goober_click("gold", 4, 5, 2)
+	check(state.goober_coins == 9, "gold P2 lucky on event+2 = 9")
+	state.goober_coins = 0
+	state.register_goober_click("normal", 1, 1)
+	check(state.goober_coins == 2, "normal P2 lucky on = 2 (lucky nao aplica a normal)")
+	state.secret_shop_unlocked = false
+	state.goober_coins = 0
+	state.register_goober_click("gold", 4, 5)
+	check(state.goober_coins == 0, "shop trancada = 0 GC")

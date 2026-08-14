@@ -40,9 +40,6 @@ const SPAWN_BLOCKED_REASON := {
 	"chef": "events",
 	"arcade": "events",
 	"fairy": "events",
-	"royal": "essence",
-	"prism": "essence",
-	"crown": "essence",
 	"boss": "boss",
 }
 

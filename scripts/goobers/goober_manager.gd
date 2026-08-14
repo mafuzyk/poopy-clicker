@@ -257,4 +257,16 @@ func _on_goober_defeated(goober: Goober) -> void:
 
 	game_state.register_goober_click(goober.type_id, int(data["progress"]), int(data["gc"]), extra_coins)
 	game_state.add_money(payout)
+
+	# Essence: canônico (goober.py) só paga quando o goober já tem essence_reward > 0;
+	# special_essence_bonus soma apenas nesse caso (e só para não-normal).
+	var base_essence: int = int(data.get("essence", 0))
+	var essence_gain := 0
+	if base_essence > 0:
+		essence_gain = base_essence
+		if is_special:
+			essence_gain += maxi(0, int(event_snapshot["special_essence_bonus"]))
+	if essence_gain > 0:
+		game_state.add_poopy_essence(essence_gain)
+
 	goober_clicked.emit()
