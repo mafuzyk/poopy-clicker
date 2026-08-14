@@ -130,6 +130,9 @@ func load() -> bool:
 
 	for handler in save_handlers:
 		handler["setter"].call(data.get(handler["key"], []))
+	# Estados intermediários emitiram changed com dados parciais; reavaliar
+	# consumidores (achievements, painéis) apenas com o estado completo.
+	game_state.changed.emit()
 	return true
 
 

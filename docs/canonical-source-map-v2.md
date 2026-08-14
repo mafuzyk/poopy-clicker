@@ -81,8 +81,11 @@
 - HP bar de multi-hit (HP > 1 funciona logicamente; sem barra visual).
 - Boss: `max_hits = 18 + prestige*3 + boss_hunter*2` — catalog tem base 18 estática; depende de prestígio/perks.
 - Essence payout (boss/royal/angel/prism/crown) bloqueado até Prestige.
-- `event_on_click` execution (frozen_blessing/bomb_chaos) bloqueado até Events.
+- `event_on_click` execution — portar apenas os IDs reais do `EVENT_INFO` canônico (storm_mode, glitch_flip, sticky, center_pull, calm, hyper_button, blink, heatwave, time_dilation, treasure_tide, blessing, hellrush, void_window, snack_break, jackpot_mode, lucky_wave) junto do sistema de Events. `frozen_blessing`/`bomb_chaos` NÃO existem no canônico (inventados e removidos acima) — não reintroduzir.
 - Stats UI completa (`stats` tem só `money_earned`; `total_clicks`/`goobers_clicked` chegam com stats system).
+
+**Divergência deliberada (adaptação):**
+- Aplicação temporal do push: o Python canônico aplica `push_x = vx * push` / `push_y = vy * push` com `push_cooldown = 8` ticks (~240 ms). No Godot, o deslocamento é `velocity * (força atual / 6.0) * delta` contínuo enquanto há contato, preservando a identidade "goober carrega o botão" sem teleporte. Forças e fórmulas de Heavy/Panic são idênticas ao canônico (`max(2, push-3)` / `max(12, push-10)`); apenas a integração temporal difere. Validar o *feel* no Android antes de considerar fidelidade fechada; alinhar o ritmo de push ao canônico se o feel pedir.
 
 ## Processo / padrões Godot (Spec V2)
 

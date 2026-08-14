@@ -101,6 +101,7 @@ func register_goober_seen(type_id: String) -> void:
 	var entry: Dictionary = bestiary_counts.get(type_id, {"seen": 0, "clicked": 0})
 	entry["seen"] = int(entry.get("seen", 0)) + 1
 	bestiary_counts[type_id] = entry
+	changed.emit()
 
 
 func register_goober_defeated(type_id: String) -> void:

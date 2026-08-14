@@ -26,12 +26,47 @@ func _initialize() -> void:
 	_test_heavy_panic_formulas()
 	_test_catalog_push_coverage()
 	_test_save_load_v2()
+	_test_state_change_emission()
 
 	if failures == 0:
 		print("SMOKE PASS: %d checks" % checks)
 	else:
 		printerr("SMOKE FAIL: %d/%d checks falharam" % [failures, checks])
 	quit(failures)
+
+
+var _seen_changes := 0
+var _load_changes := 0
+
+
+func _test_state_change_emission() -> void:
+	var state := GameState.new()
+	_seen_changes = 0
+	state.changed.connect(func() -> void: _seen_changes += 1)
+	state.register_goober_seen("gold")
+	check(_seen_changes >= 1, "register_goober_seen emite changed (bestiary atualiza no spawn)")
+	state.register_goober_seen("gold")
+	state.register_goober_seen("gold")
+	check(state.bestiary_counts["gold"]["seen"] == 3, "seen acumula (3x gold)")
+
+	var state_for_save := GameState.new()
+	state_for_save.add_money(100)
+	state_for_save.add_money(50)
+	state_for_save.stats["money_earned"] = 999
+	var save_manager := SaveManager.new()
+	save_manager.setup(state_for_save)
+	save_manager.set_save_path_for_test("user://test_change.json")
+	save_manager.save()
+
+	var loaded := GameState.new()
+	_load_changes = 0
+	loaded.changed.connect(func() -> void: _load_changes += 1)
+	var loader := SaveManager.new()
+	loader.setup(loaded)
+	loader.set_save_path_for_test("user://test_change.json")
+	check(loader.load(), "load para teste de emission ok")
+	check(loaded.get_money_earned_total() == 999, "money_earned correto no load")
+	check(_load_changes >= 2, "load emite changed ao final (estado completo): %d emissões" % _load_changes)
 
 
 func _test_stats_money() -> void:
