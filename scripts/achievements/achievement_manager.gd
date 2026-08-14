@@ -1,0 +1,132 @@
+extends RefCounted
+
+const GameState = preload("res://scripts/core/game_state.gd")
+
+signal unlocked(id: String)
+
+const DEFINITIONS := {
+	"first_click": {"name": "Primeiro passo", "hint": "Faça 1 clique e dê início ao caos."},
+	"hundred_clicks": {"name": "Clicadora nata", "hint": "Faça 100 cliques."},
+	"money_10k": {"name": "Dinheiruda", "hint": "Ganhe $10K no total."},
+	"money_1m": {"name": "Economia paralela", "hint": "Ganhe $1M ao longo das runs."},
+	"money_10m": {"name": "Milhonária", "hint": "Ganhe $10M no total."},
+	"money_1b": {"name": "Bilionária", "hint": "Ganhe $1B no total."},
+	"money_1t": {"name": "Trilhonária", "hint": "Ganhe $1T no total."},
+	"clicks_1k": {"name": "Dedos ágeis", "hint": "Faça 1.000 cliques."},
+	"clicks_10k": {"name": "Mão turbinada", "hint": "Faça 10.000 cliques."},
+	"clicks_100k": {"name": "Clicadora implacável", "hint": "Faça 100.000 cliques."},
+	"clicks_1m": {"name": "Lenda dos cliques", "hint": "Faça 1.000.000 de cliques."},
+	"normal_25": {"name": "Amiga dos goobers", "hint": "Clique 25 goobers normais."},
+	"gold_3": {"name": "Caça-ouro", "hint": "Clique 3 goobers gold."},
+	"rgb_1": {"name": "Lenda RGB", "hint": "Derrote 1 goober RGB."},
+	"rgb_5": {"name": "Arco-íris mortal", "hint": "Derrote 5 RGB goobers."},
+	"rgb_10": {"name": "Prisma destruído", "hint": "Derrote 10 RGB goobers."},
+	"boss_1": {"name": "Boss hunter", "hint": "Derrote 1 boss."},
+	"boss_5": {"name": "Predadora de chefes", "hint": "Derrote 5 bosses."},
+	"boss_10": {"name": "Caça-troféus", "hint": "Derrote 10 bosses."},
+	"angry_5": {"name": "Rivais", "hint": "Clique 5 angry goobers."},
+	"tiny_5": {"name": "Pequenina", "hint": "Clique 5 tiny goobers."},
+	"giant_5": {"name": "Gigantona", "hint": "Clique 5 giant goobers."},
+	"frozen_5": {"name": "Coração gelado", "hint": "Clique 5 frozen goobers."},
+	"bomb_5": {"name": "Desarmadora", "hint": "Clique 5 bomb goobers."},
+	"upgrade_50": {"name": "Upgradeira", "hint": "Tenha um upgrade no nível 50."},
+	"upgrade_100": {"name": "Upgrade supremo", "hint": "Tenha um upgrade no nível 100."},
+	"goober_40": {"name": "Segredo revelado", "hint": "Desbloqueie a loja goobers."},
+}
+
+var game_state: GameState
+var unlocked_ids: Array[String] = []
+
+
+func setup(state: GameState) -> void:
+	game_state = state
+	game_state.changed.connect(evaluate)
+
+
+func get_unlocked_ids() -> Array[String]:
+	return unlocked_ids.duplicate()
+
+
+func set_unlocked_ids(ids: Array) -> void:
+	unlocked_ids.clear()
+	for id in ids:
+		var id_text: String = str(id)
+		if get_definition(id_text) != {} and not unlocked_ids.has(id_text):
+			unlocked_ids.append(id_text)
+
+
+func get_definition(id: String) -> Dictionary:
+	return DEFINITIONS.get(id, {})
+
+
+func is_unlocked(id: String) -> bool:
+	return unlocked_ids.has(id)
+
+
+func evaluate() -> void:
+	for id in DEFINITIONS.keys():
+		if is_unlocked(id):
+			continue
+		if not _is_met(id):
+			continue
+		unlocked_ids.append(id)
+		unlocked.emit(id)
+
+
+func _is_met(id: String) -> bool:
+	if id == "first_click":
+		return game_state.button_clicks_total >= 1
+	if id == "hundred_clicks":
+		return game_state.button_clicks_total >= 100
+	if id == "clicks_1k":
+		return game_state.button_clicks_total >= 1000
+	if id == "clicks_10k":
+		return game_state.button_clicks_total >= 10000
+	if id == "clicks_100k":
+		return game_state.button_clicks_total >= 100000
+	if id == "clicks_1m":
+		return game_state.button_clicks_total >= 1000000
+	if id == "money_10k":
+		return game_state.lifetime_money >= 10000
+	if id == "money_1m":
+		return game_state.lifetime_money >= 1000000
+	if id == "money_10m":
+		return game_state.lifetime_money >= 10000000
+	if id == "money_1b":
+		return game_state.lifetime_money >= 1000000000
+	if id == "money_1t":
+		return game_state.lifetime_money >= 1000000000000
+	# Canônico: conta apenas goobers do tipo "normal" derrotados (bestiário por tipo).
+	if id == "normal_25":
+		return game_state.get_clicked_count("normal") >= 25
+	if id == "gold_3":
+		return game_state.get_clicked_count("gold") >= 3
+	if id == "rgb_1":
+		return game_state.get_clicked_count("rgb") >= 1
+	if id == "rgb_5":
+		return game_state.get_clicked_count("rgb") >= 5
+	if id == "rgb_10":
+		return game_state.get_clicked_count("rgb") >= 10
+	if id == "boss_1":
+		return game_state.get_clicked_count("boss") >= 1
+	if id == "boss_5":
+		return game_state.get_clicked_count("boss") >= 5
+	if id == "boss_10":
+		return game_state.get_clicked_count("boss") >= 10
+	if id == "angry_5":
+		return game_state.get_clicked_count("angry") >= 5
+	if id == "tiny_5":
+		return game_state.get_clicked_count("tiny") >= 5
+	if id == "giant_5":
+		return game_state.get_clicked_count("giant") >= 5
+	if id == "frozen_5":
+		return game_state.get_clicked_count("frozen") >= 5
+	if id == "bomb_5":
+		return game_state.get_clicked_count("bomb") >= 5
+	if id == "upgrade_50":
+		return game_state.click_level >= 50 or game_state.auto_level >= 50
+	if id == "upgrade_100":
+		return game_state.click_level >= 100 or game_state.auto_level >= 100
+	if id == "goober_40":
+		return game_state.secret_shop_unlocked
+	return false
